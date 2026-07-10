@@ -1,0 +1,51 @@
+project:
+  name: NeuralEngine
+  architecture: hexagonal
+  language: Python
+
+agents:
+  codex:
+    owns:
+      - features
+      - domain_changes
+      - vertical_slices
+      - ports
+      - adapters
+      - repositories
+      - services
+      - dependency_injection
+      - cli_additions
+      - public_behavior
+      - persisted_schema
+      - validation_order
+      - provenance
+  deepseek:
+    max_files: 3
+    allowed:
+      - concrete_bugfix
+      - targeted_regression_test
+      - ruff_fix
+      - mypy_fix
+      - small_type_fix
+      - small_message_fix
+    forbidden:
+      - feature
+      - architecture_change
+      - schema_change
+      - public_behavior_change
+      - validation_order_change
+      - provenance_change
+
+review:
+  required_sections:
+    - summary
+    - scope
+    - files_changed
+    - tests
+    - validation_output
+    - diff_stat
+    - diff_check
+    - git_status
+    - full_diff
+    - known_limitations
+    - repository_actions
