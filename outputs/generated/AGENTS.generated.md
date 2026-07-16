@@ -31,6 +31,40 @@ This file is generated from NeuralEngine Handbook.
 3. Include validation output, diff stat, diff check, git status, and full diff.
 4. Stop without committing or pushing.
 
+## Future self-observation workflow
+
+NeuralEngine development is intended to become a dogfooding source through:
+
+```text
+prompt
+→ agent execution
+→ review finding
+→ decision/correction
+→ implementation
+→ validation
+→ commit
+→ push
+→ post-work lesson
+```
+
+Automatic capture produces candidates only. Manual confirmation authorizes durable records;
+immutable records preserve the audit trail; derived summaries remain replaceable views. No
+automatic persistence, ingestion, or learning exists.
+
+## Handbook synchronization
+
+```text
+major NeuralEngine milestone
+→ commit/push NeuralEngine
+→ sync NeuralEngine-Handbook
+→ generate SKILL.md
+→ copy generated SKILL.md back to NeuralEngine
+→ commit/push skill sync
+```
+
+Each repository change is separate and reviewable. Generated outputs are rebuilt from Handbook
+sources and are never edited manually.
+
 ## Architecture
 
 # Architecture
@@ -100,6 +134,18 @@ status change, or automatic evolution.
 This architecture snapshot corresponds to source commit `88921c5` (`feat: add playbook revision
 application foundation`). Source validation for that milestone reported 537 passing tests; this is
 a milestone snapshot, not a timeless guarantee.
+
+## Decision Learning boundary
+
+Source commit `62c0dcb` accepts a future self-observation and Decision Learning architecture based
+on separate immutable `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
+`DecisionReview` records. Lifecycle state is derived from these semantic records rather than a
+mutable status or duplicate generic event stream.
+
+Decision tracking complements the existing domain chain. Consigliere remains a future advisory
+layer, while NeuralEngine remains the durable system of record. The full design, evidence model,
+dogfooding workflow, future-only CLI sketch, implementation milestone, and explicit non-behavior
+are defined in `handbook/architecture/decision-learning.md`.
 
 ## Agent policy
 

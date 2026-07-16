@@ -38,6 +38,10 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Activation does not imply application" in skill
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
+    assert "# Decision Learning Architecture" in skill
+    assert "commands are design direction only and do not exist" in skill
+    assert "No Consigliere integration exists" in skill
+    assert "No automatic persistence or ingestion exists" in skill
     assert "Do not add features" in skill
 
 
@@ -84,6 +88,22 @@ def test_decision_engine_contains_agent_and_repository_rules(tmp_path: Path) -> 
     assert "Use Codex GPT-5.5 medium" in decision_engine
     assert "DeepSeek is allowed only when all are true" in decision_engine
     assert "Do not add it to a repository" in decision_engine
+    assert "# Decision Learning Architecture" in decision_engine
+    assert "ADR-0008" in decision_engine
+
+
+def test_handbook_contains_future_decision_learning_boundaries(tmp_path: Path) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    assert "DecisionAcceptance" in handbook
+    assert "DecisionReview" in handbook
+    assert "(project_key, record_type, idempotency_key)" in handbook
+    assert "commands are design direction only and do not exist" in handbook
+    assert "No Consigliere integration exists" in handbook
+    assert "No automatic persistence or ingestion exists" in handbook
+    assert "ADR-0008" in handbook
 
 
 def test_application_architecture_contains_core_boundaries(tmp_path: Path) -> None:

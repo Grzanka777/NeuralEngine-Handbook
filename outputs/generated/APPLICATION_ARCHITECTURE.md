@@ -76,6 +76,16 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
+## Future Decision Learning ownership
+
+Future Decision Learning services should validate relations across the separate immutable
+Decision records and own the single derived lifecycle projection. They should compose initial
+duplicate detection with repository `load_all()` and filter by
+`(project_key, record_type, idempotency_key)` rather than adding repository query methods.
+
+Equivalent repeated writes should return the existing record. Reusing the same key for a different
+payload should fail visibly. These are design requirements only; no Decision service exists yet.
+
 ---
 
 # Application Errors

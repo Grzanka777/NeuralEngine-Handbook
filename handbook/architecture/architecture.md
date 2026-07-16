@@ -65,3 +65,15 @@ status change, or automatic evolution.
 This architecture snapshot corresponds to source commit `88921c5` (`feat: add playbook revision
 application foundation`). Source validation for that milestone reported 537 passing tests; this is
 a milestone snapshot, not a timeless guarantee.
+
+## Decision Learning boundary
+
+Source commit `62c0dcb` accepts a future self-observation and Decision Learning architecture based
+on separate immutable `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
+`DecisionReview` records. Lifecycle state is derived from these semantic records rather than a
+mutable status or duplicate generic event stream.
+
+Decision tracking complements the existing domain chain. Consigliere remains a future advisory
+layer, while NeuralEngine remains the durable system of record. The full design, evidence model,
+dogfooding workflow, future-only CLI sketch, implementation milestone, and explicit non-behavior
+are defined in `handbook/architecture/decision-learning.md`.

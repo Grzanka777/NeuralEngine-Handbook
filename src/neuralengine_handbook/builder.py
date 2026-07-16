@@ -49,6 +49,7 @@ def build(root: Path) -> list[Path]:
     values = {
         "constitution": _read(paths.handbook / "constitution/CONSTITUTION.md"),
         "architecture": _read(paths.handbook / "architecture/architecture.md"),
+        "decision_learning": _read(paths.handbook / "architecture/decision-learning.md"),
         "domain_chain": _read(paths.handbook / "domain/domain-chain.md"),
         "workflow": _read(paths.handbook / "workflow/development-workflow.md"),
         "validation": _read(paths.handbook / "workflow/validation.md"),
@@ -129,6 +130,7 @@ def build(root: Path) -> list[Path]:
     handbook_sections = [
         values["constitution"],
         values["architecture"],
+        values["decision_learning"],
         _read(paths.handbook / "architecture/responsibility-matrix.md"),
         values["domain_chain"],
         *_read_many(domain_files),
@@ -146,6 +148,7 @@ def build(root: Path) -> list[Path]:
         _read(paths.handbook / "decisions/ADR-0002-domain-chain.md"),
         _read(paths.handbook / "decisions/ADR-0003-agent-assignment.md"),
         _read(paths.handbook / "decisions/ADR-0004-review-artifacts.md"),
+        _read(paths.handbook / "decisions/ADR-0008-decision-learning-boundary.md"),
     ]
     handbook_path = generated / "HANDBOOK.md"
     _write_compilation(
@@ -161,6 +164,7 @@ def build(root: Path) -> list[Path]:
         "NeuralEngine Decision Engine",
         [
             _read(paths.handbook / "architecture/decision-engine.md"),
+            values["decision_learning"],
             _read(paths.handbook / "architecture/responsibility-matrix.md"),
             _read(paths.handbook / "checklists/domain-change.md"),
             _read(paths.handbook / "checklists/new-cli-command.md"),
@@ -168,6 +172,7 @@ def build(root: Path) -> list[Path]:
             _read(paths.handbook / "checklists/repository.md"),
             _read(paths.handbook / "checklists/adapter.md"),
             _read(paths.handbook / "checklists/container.md"),
+            _read(paths.handbook / "decisions/ADR-0008-decision-learning-boundary.md"),
         ],
     )
     outputs.append(decision_path)

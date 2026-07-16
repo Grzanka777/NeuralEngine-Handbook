@@ -36,3 +36,22 @@ Confirmed example:
   revision resolution to `PlaybookRevisionActivationService`.
 - Repository interfaces remain persistence-focused.
 - `PlaybookService` should not gain unrelated persistence dependencies.
+
+## Complementary Decision Learning chain
+
+Future Decision tracking records the bounded choice between Observation and reviewed learning:
+
+```text
+Observation
+→ Decision
+→ DecisionAcceptance
+→ DecisionAction
+→ DecisionOutcome
+→ DecisionReview
+→ Experience
+→ Knowledge
+```
+
+This is a complementary provenance path, not a replacement for the canonical domain chain.
+DecisionOutcome is factual; Experience is interpreted; Knowledge is generalized; Playbook remains
+a separately created repeatable procedure. No transition in this path is automatic.
