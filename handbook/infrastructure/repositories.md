@@ -25,3 +25,10 @@ Repository adapters require tests for:
 - serialization round trip,
 - invalid/corrupted persisted data,
 - provenance preservation.
+
+## Revision application adapter
+
+`JsonPlaybookRevisionApplicationRepository` implements
+`PlaybookRevisionApplicationRepository` and stores application audit records under
+`NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
+identity lookup operations; relation filtering remains in the application layer.

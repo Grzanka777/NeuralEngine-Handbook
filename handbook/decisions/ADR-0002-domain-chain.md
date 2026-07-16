@@ -14,6 +14,8 @@ The canonical NeuralEngine chain is:
 → `PlaybookEvaluation`
 → `EvolutionProposal`
 → `PlaybookRevision`
+→ `PlaybookRevisionActivation`
+→ `PlaybookRevisionApplication`
 
 ## Consequences
 
@@ -21,3 +23,5 @@ The canonical NeuralEngine chain is:
 - Transitions are application use cases.
 - Provenance must not be lost between stages.
 - A later-stage object must not silently absorb the responsibility of an earlier-stage object.
+- Revision, activation, and application remain separate explicit records.
+- Activation does not imply application, and application intent does not imply materialization.

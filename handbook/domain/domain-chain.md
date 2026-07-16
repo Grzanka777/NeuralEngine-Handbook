@@ -10,6 +10,18 @@ The confirmed NeuralEngine chain is:
 → `PlaybookEvaluation`
 → `EvolutionProposal`
 → `PlaybookRevision`
+→ `PlaybookRevisionActivation`
+→ `PlaybookRevisionApplication`
+
+The final three stages are separate records with separate responsibilities:
+
+- `PlaybookRevision` is an immutable candidate snapshot.
+- `PlaybookRevisionActivation` is an immutable lifecycle and audit decision.
+- `PlaybookRevisionApplication` is an immutable application-intent and audit record.
+
+Creating a revision does not activate or apply it. Activation does not imply application.
+The current application foundation records intent only: it does not materialize revision
+content into a Playbook or mutate any related record.
 
 ## Relationship ownership
 
@@ -18,5 +30,9 @@ Relationship navigation belongs in application services unless persistence itsel
 Confirmed example:
 
 - `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
+- `PlaybookRevisionActivationService` owns activation navigation and canonical active-revision
+  derivation through `get_active_revision_for_playbook(playbook_id)`.
+- `PlaybookRevisionApplicationService` owns application-record navigation and delegates active
+  revision resolution to `PlaybookRevisionActivationService`.
 - Repository interfaces remain persistence-focused.
 - `PlaybookService` should not gain unrelated persistence dependencies.

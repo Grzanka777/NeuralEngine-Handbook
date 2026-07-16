@@ -61,3 +61,15 @@ service.handle(value)
 When a service gains unrelated responsibilities, split by use case or domain ownership.
 
 Do not split merely to reduce line count. Split when reasons to change diverge.
+
+## Revision lifecycle ownership
+
+`PlaybookRevisionActivationService` owns active-revision derivation through
+`get_active_revision_for_playbook(playbook_id)`.
+
+`PlaybookRevisionApplicationService.add(...)` validates the Playbook, revision, accepted proposal,
+relation consistency, optional source activation, and current active revision before saving one
+application audit record. It delegates active-revision resolution to the activation service.
+
+Its relation-list methods verify the source entity, load all application records, filter in the
+application layer, preserve repository order, and perform no mutation.

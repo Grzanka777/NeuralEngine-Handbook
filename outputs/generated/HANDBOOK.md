@@ -63,6 +63,44 @@ NeuralEngine follows a hexagonal architecture.
 - CLI translates input and renders output.
 - Relationship navigation should be composed in services when it does not belong in persistence.
 
+## Revision lifecycle and application boundary
+
+The current end of the domain chain is deliberately split across three immutable records:
+
+```text
+PlaybookRevision
+→ PlaybookRevisionActivation
+→ PlaybookRevisionApplication
+```
+
+`PlaybookRevision` is a candidate snapshot. `PlaybookRevisionActivation` records lifecycle and
+audit decisions. `PlaybookRevisionApplication` records application intent and audit state.
+Activation does not imply application.
+
+`PlaybookRevisionActivationService.get_active_revision_for_playbook(playbook_id)` is the canonical
+owner of active-revision resolution. `PlaybookRevisionApplicationService` delegates to it and must
+not duplicate activation-history replay.
+
+The application foundation has a domain model, repository port, JSON adapter at
+`NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`, and container wiring for both repository and service.
+`PlaybookRevisionApplicationService.add(...)` validates that the Playbook, revision, and proposal
+exist; the proposal is still accepted; the revision belongs to the supplied Playbook and proposal;
+an optional source activation exists and matches the same relation; and the requested revision is
+currently active.
+
+Read-only application navigation verifies the source entity, calls
+`PlaybookRevisionApplicationRepository.load_all()`, filters in the application layer, and preserves
+repository order. No relation-specific repository query methods exist.
+
+Activation inspection and lifecycle-write CLI commands exist. Application CLI commands do not.
+Records created by the current application service have `content_changed=False`; there is no
+Playbook content mutation, revision materialization, proposal mutation or application, proposal
+status change, or automatic evolution.
+
+This architecture snapshot corresponds to source commit `88921c5` (`feat: add playbook revision
+application foundation`). Source validation for that milestone reported 537 passing tests; this is
+a milestone snapshot, not a timeless guarantee.
+
 ---
 
 # Responsibility Matrix
@@ -94,6 +132,18 @@ The confirmed NeuralEngine chain is:
 → `PlaybookEvaluation`
 → `EvolutionProposal`
 → `PlaybookRevision`
+→ `PlaybookRevisionActivation`
+→ `PlaybookRevisionApplication`
+
+The final three stages are separate records with separate responsibilities:
+
+- `PlaybookRevision` is an immutable candidate snapshot.
+- `PlaybookRevisionActivation` is an immutable lifecycle and audit decision.
+- `PlaybookRevisionApplication` is an immutable application-intent and audit record.
+
+Creating a revision does not activate or apply it. Activation does not imply application.
+The current application foundation records intent only: it does not materialize revision
+content into a Playbook or mutate any related record.
 
 ## Relationship ownership
 
@@ -102,6 +152,10 @@ Relationship navigation belongs in application services unless persistence itsel
 Confirmed example:
 
 - `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
+- `PlaybookRevisionActivationService` owns activation navigation and canonical active-revision
+  derivation through `get_active_revision_for_playbook(playbook_id)`.
+- `PlaybookRevisionApplicationService` owns application-record navigation and delegates active
+  revision resolution to `PlaybookRevisionActivationService`.
 - Repository interfaces remain persistence-focused.
 - `PlaybookService` should not gain unrelated persistence dependencies.
 
@@ -341,13 +395,14 @@ An EvolutionProposal expresses a controlled suggestion for changing a playbook b
 
 ## Responsibility
 
-A PlaybookRevision represents a concrete versioned change associated with a playbook.
+A PlaybookRevision is an immutable candidate snapshot of explicitly supplied revised Playbook
+content. It is linked to one existing Playbook and one accepted EvolutionProposal.
 
 ## Owns
 
 - playbook reference,
-- revision content or metadata,
-- source proposal reference where applicable,
+- revised content and metadata,
+- source proposal reference,
 - identity.
 
 ## Must not own
@@ -355,6 +410,14 @@ A PlaybookRevision represents a concrete versioned change associated with a play
 - repository navigation,
 - unrelated playbook service responsibilities,
 - infrastructure-specific persistence behavior.
+- activation state,
+- application state.
+
+## Lifecycle boundary
+
+Creating a revision does not mutate the Playbook, apply the proposal, activate the revision, or
+perform automatic evolution. Activation and application are represented by separate immutable
+records.
 
 ## Confirmed application rule
 
@@ -366,7 +429,122 @@ The repository port remains persistence-focused and should not gain a broad `fin
 
 - Revision identity is explicit.
 - Parent playbook identity is explicit.
-- Provenance to proposal is preserved where applicable.
+- Provenance to proposal is preserved.
+- Revision creation does not change proposal status.
+- Revision creation does not apply proposal changes.
+
+---
+
+# PlaybookRevisionActivation
+
+## Responsibility
+
+A PlaybookRevisionActivation is a separate immutable lifecycle and audit record for an explicit
+manual or external-system decision about one PlaybookRevision.
+
+Supported decisions are:
+
+- `active`,
+- `superseded`,
+- `rejected`.
+
+Activation does not imply application. It does not materialize revision content into a Playbook,
+mutate a Playbook or PlaybookRevision, change EvolutionProposal status, apply a proposal, or
+perform automatic evolution.
+
+## Application ownership
+
+`PlaybookRevisionActivationService` owns read-only lifecycle navigation by Playbook,
+PlaybookRevision, and EvolutionProposal. It also owns canonical active-revision derivation through:
+
+```python
+PlaybookRevisionActivationService.get_active_revision_for_playbook(playbook_id)
+```
+
+Activation records are replayed in repository order only inside this service. Consumers must
+delegate active-revision resolution rather than duplicate lifecycle replay.
+
+Each relation-list method verifies its source entity, loads all activation records through
+`PlaybookRevisionActivationRepository.load_all()`, filters in the application layer, and preserves
+repository order. No relation-specific repository query methods are added.
+
+## Current CLI
+
+Read-only lifecycle inspection exists through:
+
+```text
+neural playbook revision-history PLAYBOOK_UUID
+neural playbook active-revision PLAYBOOK_UUID
+neural revision activation-history REVISION_UUID
+neural proposal activation-history PROPOSAL_UUID
+```
+
+Explicit lifecycle decisions can be recorded through:
+
+```text
+neural revision activate ...
+neural revision supersede ...
+neural revision reject ...
+```
+
+These write only PlaybookRevisionActivation records.
+
+---
+
+# PlaybookRevisionApplication
+
+## Responsibility
+
+A PlaybookRevisionApplication is an immutable application-intent and audit record. The current
+foundation records that an active revision reached an explicit application boundary; it does not
+materialize or copy revision content into a Playbook.
+
+Current fields are:
+
+```text
+id
+applied_at
+playbook_id
+revision_id
+proposal_id
+reason
+applied_by
+notes
+tags
+source_activation_id
+idempotency_key
+content_changed
+```
+
+`content_changed` defaults to `False`.
+
+## Current foundation
+
+The implemented vertical-slice foundation includes:
+
+- the `PlaybookRevisionApplication` domain model,
+- `PlaybookRevisionApplicationRepository`,
+- `JsonPlaybookRevisionApplicationRepository`,
+- `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`,
+- container repository and service wiring,
+- `PlaybookRevisionApplicationService.add(...)`,
+- read-only `list_for_playbook(...)`, `list_for_revision(...)`, and
+  `list_for_proposal(...)` navigation.
+
+## Invariants and non-behavior
+
+Creating an application record does not mutate Playbook, PlaybookRevision, EvolutionProposal, or
+PlaybookRevisionActivation records. It does not change proposal status, apply a proposal, or
+perform automatic evolution.
+
+There is currently:
+
+- no CLI apply command,
+- no CLI application-history commands,
+- no Playbook content mutation,
+- no PlaybookRevision materialization,
+- no proposal application,
+- no application-specific repository query method.
 
 ---
 
@@ -433,6 +611,18 @@ service.handle(value)
 When a service gains unrelated responsibilities, split by use case or domain ownership.
 
 Do not split merely to reduce line count. Split when reasons to change diverge.
+
+## Revision lifecycle ownership
+
+`PlaybookRevisionActivationService` owns active-revision derivation through
+`get_active_revision_for_playbook(playbook_id)`.
+
+`PlaybookRevisionApplicationService.add(...)` validates the Playbook, revision, accepted proposal,
+relation consistency, optional source activation, and current active revision before saving one
+application audit record. It delegates active-revision resolution to the activation service.
+
+Its relation-list methods verify the source entity, load all application records, filter in the
+application layer, preserve repository order, and perform no mutation.
 
 ---
 
@@ -537,6 +727,10 @@ Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
 
+`PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
+`get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
+`PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.
+
 ## Repository return types
 
 Prefer:
@@ -632,6 +826,13 @@ Repository adapters require tests for:
 - invalid/corrupted persisted data,
 - provenance preservation.
 
+## Revision application adapter
+
+`JsonPlaybookRevisionApplicationRepository` implements
+`PlaybookRevisionApplicationRepository` and stores application audit records under
+`NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
+identity lookup operations; relation filtering remains in the application layer.
+
 ---
 
 # Dependency Injection and Container
@@ -679,6 +880,11 @@ repository = container.get("revision_repository")
 ## Change policy
 
 Any container or registration change is architectural work owned by Codex.
+
+The current revision application foundation is wired through
+`Container.playbook_revision_application_repository()` and
+`Container.playbook_revision_application_service()`. The service receives its repositories and a
+`PlaybookRevisionActivationService`, preserving canonical ownership of active-revision resolution.
 
 ---
 
@@ -1176,6 +1382,8 @@ The canonical NeuralEngine chain is:
 → `PlaybookEvaluation`
 → `EvolutionProposal`
 → `PlaybookRevision`
+→ `PlaybookRevisionActivation`
+→ `PlaybookRevisionApplication`
 
 ## Consequences
 
@@ -1183,6 +1391,8 @@ The canonical NeuralEngine chain is:
 - Transitions are application use cases.
 - Provenance must not be lost between stages.
 - A later-stage object must not silently absorb the responsibility of an earlier-stage object.
+- Revision, activation, and application remain separate explicit records.
+- Activation does not imply application, and application intent does not imply materialization.
 
 ---
 

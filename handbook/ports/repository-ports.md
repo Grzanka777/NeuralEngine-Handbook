@@ -24,6 +24,10 @@ Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
 
+`PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
+`get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
+`PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.
+
 ## Repository return types
 
 Prefer:

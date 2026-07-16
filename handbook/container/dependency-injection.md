@@ -43,3 +43,8 @@ repository = container.get("revision_repository")
 ## Change policy
 
 Any container or registration change is architectural work owned by Codex.
+
+The current revision application foundation is wired through
+`Container.playbook_revision_application_repository()` and
+`Container.playbook_revision_application_service()`. The service receives its repositories and a
+`PlaybookRevisionActivationService`, preserving canonical ownership of active-revision resolution.

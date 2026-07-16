@@ -64,6 +64,18 @@ When a service gains unrelated responsibilities, split by use case or domain own
 
 Do not split merely to reduce line count. Split when reasons to change diverge.
 
+## Revision lifecycle ownership
+
+`PlaybookRevisionActivationService` owns active-revision derivation through
+`get_active_revision_for_playbook(playbook_id)`.
+
+`PlaybookRevisionApplicationService.add(...)` validates the Playbook, revision, accepted proposal,
+relation consistency, optional source activation, and current active revision before saving one
+application audit record. It delegates active-revision resolution to the activation service.
+
+Its relation-list methods verify the source entity, load all application records, filter in the
+application layer, preserve repository order, and perform no mutation.
+
 ---
 
 # Application Errors
@@ -167,6 +179,10 @@ Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
 
+`PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
+`get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
+`PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.
+
 ## Repository return types
 
 Prefer:
@@ -262,6 +278,13 @@ Repository adapters require tests for:
 - invalid/corrupted persisted data,
 - provenance preservation.
 
+## Revision application adapter
+
+`JsonPlaybookRevisionApplicationRepository` implements
+`PlaybookRevisionApplicationRepository` and stores application audit records under
+`NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
+identity lookup operations; relation filtering remains in the application layer.
+
 ---
 
 # Dependency Injection and Container
@@ -309,6 +332,11 @@ repository = container.get("revision_repository")
 ## Change policy
 
 Any container or registration change is architectural work owned by Codex.
+
+The current revision application foundation is wired through
+`Container.playbook_revision_application_repository()` and
+`Container.playbook_revision_application_service()`. The service receives its repositories and a
+`PlaybookRevisionActivationService`, preserving canonical ownership of active-revision resolution.
 
 ---
 

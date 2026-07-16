@@ -2,13 +2,14 @@
 
 ## Responsibility
 
-A PlaybookRevision represents a concrete versioned change associated with a playbook.
+A PlaybookRevision is an immutable candidate snapshot of explicitly supplied revised Playbook
+content. It is linked to one existing Playbook and one accepted EvolutionProposal.
 
 ## Owns
 
 - playbook reference,
-- revision content or metadata,
-- source proposal reference where applicable,
+- revised content and metadata,
+- source proposal reference,
 - identity.
 
 ## Must not own
@@ -16,6 +17,14 @@ A PlaybookRevision represents a concrete versioned change associated with a play
 - repository navigation,
 - unrelated playbook service responsibilities,
 - infrastructure-specific persistence behavior.
+- activation state,
+- application state.
+
+## Lifecycle boundary
+
+Creating a revision does not mutate the Playbook, apply the proposal, activate the revision, or
+perform automatic evolution. Activation and application are represented by separate immutable
+records.
 
 ## Confirmed application rule
 
@@ -27,4 +36,6 @@ The repository port remains persistence-focused and should not gain a broad `fin
 
 - Revision identity is explicit.
 - Parent playbook identity is explicit.
-- Provenance to proposal is preserved where applicable.
+- Provenance to proposal is preserved.
+- Revision creation does not change proposal status.
+- Revision creation does not apply proposal changes.
