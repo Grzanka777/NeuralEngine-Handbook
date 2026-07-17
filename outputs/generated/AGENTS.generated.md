@@ -137,15 +137,16 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `9d5d47b` implements separate immutable `Decision` and `DecisionAcceptance` records,
-embedded `EvidenceReference`, persistence-focused ports and JSON adapters, application services,
-container wiring, and thin proposal/acceptance CLI commands. Acceptance explicitly authorizes
-possible future execution; it does not execute or mutate the Decision.
+Source commit `1964356` implements separate immutable `Decision`, `DecisionAcceptance`, and
+`DecisionAction` records, persistence-focused ports and JSON adapters, application services,
+container wiring, thin proposal/acceptance/action CLI commands, and the canonical
+`DecisionLifecycleService`. An action records work performed; it does not assert success or an
+outcome.
 
-`DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only. Only `proposed` and
-`accepted` can currently be derived. There is no execution, reversal, ingestion, automatic
-learning, full lifecycle replay, or Consigliere integration. The authoritative implemented
-contract and future boundary are defined in
+Only `proposed`, `accepted`, and `in_progress` can currently be derived. `DecisionOutcome` and
+`DecisionReview` remain future-only. There is no execution engine, completion/success/failure
+state, reversal, ingestion, automatic learning, generic full lifecycle replay, or Consigliere
+integration. The authoritative implemented contract and future boundary are defined in
 `handbook/architecture/decision-learning.md`.
 
 ## Agent policy

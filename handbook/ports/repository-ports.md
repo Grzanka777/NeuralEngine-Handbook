@@ -36,6 +36,10 @@ query method is part of the port.
 Decision relation filtering, eligibility, and idempotency belong to
 `DecisionAcceptanceService`; no relation, project, or idempotency query method is part of the port.
 
+`DecisionActionRepository` is limited to `save()`, `load_all()`, and `get_by_id()`.
+Relation validation, Decision filtering, idempotency, and lifecycle projection belong to
+application services; no relation, idempotency, or lifecycle query method is part of the port.
+
 ## Repository return types
 
 Prefer:

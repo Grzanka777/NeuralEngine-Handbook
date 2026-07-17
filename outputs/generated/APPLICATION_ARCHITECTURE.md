@@ -103,6 +103,23 @@ acceptance both fail visibly without writing.
 and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
 does not mutate Decision or create actions, outcomes, reviews, execution, or learning.
 
+## Decision action and lifecycle ownership
+
+`DecisionActionService.add()` validates the Decision, matching acceptance, and optional
+PlaybookRun before creating an immutable action. It uses
+`(decision_id, "decision_action", idempotency_key)` for application-layer idempotency, permits
+multiple distinct actions, and mutates no related record. PlaybookRun and Playbook expose no
+`project_key`, so the service can validate only run existence without a schema change.
+
+`list_for_decision()` validates the Decision, filters `load_all()` in repository order, and
+`show()` owns explicit action-not-found behavior. The service creates no Outcome, Review, or
+learning record.
+
+`DecisionLifecycleService` is the only canonical projection owner. It validates persisted
+Decision/acceptance/action relations and derives only `proposed`, `accepted`, or `in_progress`.
+It writes no status, ignores repository order for state, and exposes no completed, succeeded,
+failed, or reviewed state.
+
 ---
 
 # Application Errors
@@ -217,6 +234,10 @@ query method is part of the port.
 `DecisionAcceptanceRepository` is also limited to `save()`, `load_all()`, and `get_by_id()`.
 Decision relation filtering, eligibility, and idempotency belong to
 `DecisionAcceptanceService`; no relation, project, or idempotency query method is part of the port.
+
+`DecisionActionRepository` is limited to `save()`, `load_all()`, and `get_by_id()`.
+Relation validation, Decision filtering, idempotency, and lifecycle projection belong to
+application services; no relation, idempotency, or lifecycle query method is part of the port.
 
 ## Repository return types
 
@@ -336,6 +357,14 @@ directory. UUIDs, timestamps, embedded evidence, and tags round-trip through dom
 `load_all()` sorts file names for deterministic order, and malformed data surfaces validation
 errors. The adapter performs no relation filtering, eligibility decision, migration, or ingestion.
 
+## Decision action adapter
+
+`JsonDecisionActionRepository` implements `DecisionActionRepository` and stores one JSON file per
+action under `NeuralPaths.DECISION_ACTIONS`; Brain initialization creates the directory. Complete
+DecisionAction records round-trip through domain validation. `load_all()` sorts file names for
+deterministic order, and malformed data surfaces validation errors. The adapter performs no
+relation filtering, lifecycle projection, migration, ingestion, or command execution.
+
 ---
 
 # Dependency Injection and Container
@@ -398,6 +427,12 @@ The acceptance foundation is wired through `Container.decision_acceptance_reposi
 `Container.decision_acceptance_service()`. The container supplies
 `JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
 `DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.
+
+The action foundation is wired through `Container.decision_action_repository()`,
+`Container.decision_action_service()`, and `Container.decision_lifecycle_service()`. The action
+service receives JSON action, Decision, acceptance, and PlaybookRun repositories. The lifecycle
+service receives Decision, acceptance, and action repositories. CLI handlers resolve services and
+construct no repositories.
 
 ---
 

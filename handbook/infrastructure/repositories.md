@@ -48,3 +48,11 @@ file per acceptance under `NeuralPaths.DECISION_ACCEPTANCES`; Brain initializati
 directory. UUIDs, timestamps, embedded evidence, and tags round-trip through domain validation.
 `load_all()` sorts file names for deterministic order, and malformed data surfaces validation
 errors. The adapter performs no relation filtering, eligibility decision, migration, or ingestion.
+
+## Decision action adapter
+
+`JsonDecisionActionRepository` implements `DecisionActionRepository` and stores one JSON file per
+action under `NeuralPaths.DECISION_ACTIONS`; Brain initialization creates the directory. Complete
+DecisionAction records round-trip through domain validation. `load_all()` sorts file names for
+deterministic order, and malformed data surfaces validation errors. The adapter performs no
+relation filtering, lifecycle projection, migration, ingestion, or command execution.

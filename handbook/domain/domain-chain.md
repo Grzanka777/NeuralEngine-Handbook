@@ -39,14 +39,14 @@ Confirmed example:
 
 ## Complementary Decision Learning chain
 
-The implemented Decision and DecisionAcceptance foundations record a bounded proposed choice and
-explicit authorization after Observation context:
+The implemented Decision, DecisionAcceptance, and DecisionAction foundations record a bounded
+proposed choice, explicit authorization, and work performed after Observation context:
 
 ```text
 Observation
 → Decision
 → DecisionAcceptance
-→ future DecisionAction
+→ DecisionAction
 → future DecisionOutcome
 → future DecisionReview
 → Experience
@@ -55,6 +55,6 @@ Observation
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
 DecisionOutcome is factual; Experience is interpreted; Knowledge is generalized; Playbook remains
-a separately created repeatable procedure. Decision, DecisionAcceptance, and their embedded
-EvidenceReference values exist at source commit `9d5d47b`; acceptance is explicit, and no later
+a separately created repeatable procedure. Decision, DecisionAcceptance, DecisionAction, and their
+embedded EvidenceReference values exist at source commit `1964356`; no Outcome, Review, or later
 transition in this path is automatic.

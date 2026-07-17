@@ -100,3 +100,20 @@ acceptance both fail visibly without writing.
 `list_for_decision()` verifies the Decision, filters acceptance records in the application layer,
 and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
 does not mutate Decision or create actions, outcomes, reviews, execution, or learning.
+
+## Decision action and lifecycle ownership
+
+`DecisionActionService.add()` validates the Decision, matching acceptance, and optional
+PlaybookRun before creating an immutable action. It uses
+`(decision_id, "decision_action", idempotency_key)` for application-layer idempotency, permits
+multiple distinct actions, and mutates no related record. PlaybookRun and Playbook expose no
+`project_key`, so the service can validate only run existence without a schema change.
+
+`list_for_decision()` validates the Decision, filters `load_all()` in repository order, and
+`show()` owns explicit action-not-found behavior. The service creates no Outcome, Review, or
+learning record.
+
+`DecisionLifecycleService` is the only canonical projection owner. It validates persisted
+Decision/acceptance/action relations and derives only `proposed`, `accepted`, or `in_progress`.
+It writes no status, ignores repository order for state, and exposes no completed, succeeded,
+failed, or reviewed state.
