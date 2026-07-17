@@ -32,3 +32,11 @@ Repository adapters require tests for:
 `PlaybookRevisionApplicationRepository` and stores application audit records under
 `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
 identity lookup operations; relation filtering remains in the application layer.
+
+## Decision adapter
+
+`JsonDecisionRepository` implements `DecisionRepository` and stores one JSON file per Decision
+under `NeuralPaths.DECISIONS`. UUIDs, timestamps, optional values, and embedded
+`EvidenceReference` values round-trip through domain validation. `load_all()` sorts file names for
+deterministic order, and malformed data surfaces validation errors. The adapter performs no
+project filtering, idempotency query, migration, or ingestion.

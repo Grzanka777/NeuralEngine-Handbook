@@ -39,19 +39,20 @@ Confirmed example:
 
 ## Complementary Decision Learning chain
 
-Future Decision tracking records the bounded choice between Observation and reviewed learning:
+The implemented Decision foundation records a bounded proposed choice after Observation context:
 
 ```text
 Observation
 → Decision
-→ DecisionAcceptance
-→ DecisionAction
-→ DecisionOutcome
-→ DecisionReview
+→ future DecisionAcceptance
+→ future DecisionAction
+→ future DecisionOutcome
+→ future DecisionReview
 → Experience
 → Knowledge
 ```
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
 DecisionOutcome is factual; Experience is interpreted; Knowledge is generalized; Playbook remains
-a separately created repeatable procedure. No transition in this path is automatic.
+a separately created repeatable procedure. Only Decision and its embedded EvidenceReference exist
+at source commit `7724342`; no transition in this path is automatic.

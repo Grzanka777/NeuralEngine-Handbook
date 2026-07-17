@@ -74,12 +74,17 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
-## Future Decision Learning ownership
+## Decision service ownership
 
-Future Decision Learning services should validate relations across the separate immutable
-Decision records and own the single derived lifecycle projection. They should compose initial
-duplicate detection with repository `load_all()` and filter by
-`(project_key, record_type, idempotency_key)` rather than adding repository query methods.
+`DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
+optional same-project superseded Decision, then performs idempotency detection through repository
+`load_all()` and application-layer filtering. Its scope is
+`(project_key, "decision", idempotency_key)`; no repository query method exists.
 
-Equivalent repeated writes should return the existing record. Reusing the same key for a different
-payload should fail visibly. These are design requirements only; no Decision service exists yet.
+An equivalent replay returns the existing Decision. Reusing the same key with a different semantic
+payload fails visibly without writing. Generated Decision identity and timestamps, including
+embedded `EvidenceReference.captured_at`, are excluded from semantic comparison.
+
+`list_decisions()` preserves repository order and may filter by a non-blank project key in the
+application layer. `show()` owns the explicit not-found behavior. No lifecycle transition,
+automatic learning, or downstream record creation is part of this service.

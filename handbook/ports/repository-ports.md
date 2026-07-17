@@ -28,6 +28,10 @@ Confirmed rule:
 `get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
 `PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.
 
+`DecisionRepository` is likewise limited to `save()`, `load_all()`, and `get_by_id()`.
+Project filtering and idempotency detection belong to `DecisionService`; no project or idempotency
+query method is part of the port.
+
 ## Repository return types
 
 Prefer:

@@ -68,12 +68,12 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `62c0dcb` accepts a future self-observation and Decision Learning architecture based
-on separate immutable `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
-`DecisionReview` records. Lifecycle state is derived from these semantic records rather than a
-mutable status or duplicate generic event stream.
+Source commit `7724342` implements the immutable `Decision` and embedded `EvidenceReference`, a
+persistence-focused repository port and JSON adapter, `DecisionService`, container wiring, and
+thin `neural decision add/list/show` commands. The service owns Observation and supersession
+validation plus load-and-filter idempotency; the CLI constructs no repositories.
 
-Decision tracking complements the existing domain chain. Consigliere remains a future advisory
-layer, while NeuralEngine remains the durable system of record. The full design, evidence model,
-dogfooding workflow, future-only CLI sketch, implementation milestone, and explicit non-behavior
-are defined in `handbook/architecture/decision-learning.md`.
+`DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only.
+There is no ingestion, automatic learning, lifecycle replay, or Consigliere integration. The
+authoritative implemented contract and future boundary are defined in
+`handbook/architecture/decision-learning.md`.

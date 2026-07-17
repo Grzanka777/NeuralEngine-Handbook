@@ -4,8 +4,9 @@ Status: Accepted
 
 ## Decision
 
-Future development decision tracking uses separate immutable `Decision`, `DecisionAcceptance`,
-`DecisionAction`, `DecisionOutcome`, and `DecisionReview` records. Lifecycle state is derived from
+Development decision tracking uses an implemented immutable `Decision` with embedded immutable
+`EvidenceReference` values. `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
+`DecisionReview` remain separate future-only records. Any future lifecycle state is derived from
 those semantic records, not stored as mutable `Decision.status` or duplicated in a generic event
 stream.
 
@@ -21,5 +22,7 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- The first recommended implementation milestone is the immutable Decision foundation with only
-  future `add`, `list`, and `show` CLI behavior.
+- Source commit `7724342` implements only the Decision foundation and `neural decision
+  add/list/show`; it does not implement the later lifecycle.
+- The one recommended next milestone is `DecisionAcceptance foundation`, kept separate from
+  DecisionAction and DecisionOutcome.

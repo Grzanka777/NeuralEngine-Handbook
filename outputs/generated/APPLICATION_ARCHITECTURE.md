@@ -76,15 +76,20 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
-## Future Decision Learning ownership
+## Decision service ownership
 
-Future Decision Learning services should validate relations across the separate immutable
-Decision records and own the single derived lifecycle projection. They should compose initial
-duplicate detection with repository `load_all()` and filter by
-`(project_key, record_type, idempotency_key)` rather than adding repository query methods.
+`DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
+optional same-project superseded Decision, then performs idempotency detection through repository
+`load_all()` and application-layer filtering. Its scope is
+`(project_key, "decision", idempotency_key)`; no repository query method exists.
 
-Equivalent repeated writes should return the existing record. Reusing the same key for a different
-payload should fail visibly. These are design requirements only; no Decision service exists yet.
+An equivalent replay returns the existing Decision. Reusing the same key with a different semantic
+payload fails visibly without writing. Generated Decision identity and timestamps, including
+embedded `EvidenceReference.captured_at`, are excluded from semantic comparison.
+
+`list_decisions()` preserves repository order and may filter by a non-blank project key in the
+application layer. `show()` owns the explicit not-found behavior. No lifecycle transition,
+automatic learning, or downstream record creation is part of this service.
 
 ---
 
@@ -193,6 +198,10 @@ Confirmed rule:
 `get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
 `PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.
 
+`DecisionRepository` is likewise limited to `save()`, `load_all()`, and `get_by_id()`.
+Project filtering and idempotency detection belong to `DecisionService`; no project or idempotency
+query method is part of the port.
+
 ## Repository return types
 
 Prefer:
@@ -295,6 +304,14 @@ Repository adapters require tests for:
 `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
 identity lookup operations; relation filtering remains in the application layer.
 
+## Decision adapter
+
+`JsonDecisionRepository` implements `DecisionRepository` and stores one JSON file per Decision
+under `NeuralPaths.DECISIONS`. UUIDs, timestamps, optional values, and embedded
+`EvidenceReference` values round-trip through domain validation. `load_all()` sorts file names for
+deterministic order, and malformed data surfaces validation errors. The adapter performs no
+project filtering, idempotency query, migration, or ingestion.
+
 ---
 
 # Dependency Injection and Container
@@ -347,6 +364,11 @@ The current revision application foundation is wired through
 `Container.playbook_revision_application_repository()` and
 `Container.playbook_revision_application_service()`. The service receives its repositories and a
 `PlaybookRevisionActivationService`, preserving canonical ownership of active-revision resolution.
+
+The Decision foundation is wired through `Container.decision_repository()` and
+`Container.decision_service()`. The container supplies `JsonDecisionRepository` and
+`JsonObservationRepository` to `DecisionService`; Decision CLI handlers resolve the service and do
+not construct repositories.
 
 ---
 

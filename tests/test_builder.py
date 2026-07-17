@@ -39,9 +39,16 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
     assert "# Decision Learning Architecture" in skill
-    assert "commands are design direction only and do not exist" in skill
+    assert "These commands exist at commit `7724342`" in skill
+    assert "neural decision add" in skill
+    assert "neural decision list" in skill
+    assert "neural decision show DECISION_UUID" in skill
+    assert "DecisionAcceptance foundation" in skill
+    assert "future-only records" in skill
     assert "No Consigliere integration exists" in skill
-    assert "No automatic persistence or ingestion exists" in skill
+    assert "no automatic persistence, ingestion, or learning exists" in skill
+    assert "same key + equivalent semantic payload" in skill
+    assert "There is no Evidence repository, service, or CLI" in skill
     assert "Do not add features" in skill
 
 
@@ -92,17 +99,23 @@ def test_decision_engine_contains_agent_and_repository_rules(tmp_path: Path) -> 
     assert "ADR-0008" in decision_engine
 
 
-def test_handbook_contains_future_decision_learning_boundaries(tmp_path: Path) -> None:
+def test_handbook_contains_decision_foundation_and_future_boundaries(tmp_path: Path) -> None:
     work_root = _copy_repo(tmp_path)
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    assert "NeuralEngine source commit `7724342` implements the Decision foundation" in handbook
+    assert "neural decision add" in handbook
+    assert "neural decision list" in handbook
+    assert "neural decision show DECISION_UUID" in handbook
     assert "DecisionAcceptance" in handbook
     assert "DecisionReview" in handbook
-    assert "(project_key, record_type, idempotency_key)" in handbook
-    assert "commands are design direction only and do not exist" in handbook
+    assert "future-only records" in handbook
+    assert '(project_key, "decision", idempotency_key)' in handbook
+    assert "same key + different semantic payload" in handbook
+    assert "There is no Evidence repository, service, or CLI" in handbook
     assert "No Consigliere integration exists" in handbook
-    assert "No automatic persistence or ingestion exists" in handbook
+    assert "no automatic persistence, ingestion, or learning exists" in handbook
     assert "ADR-0008" in handbook
 
 
