@@ -53,3 +53,8 @@ The Decision foundation is wired through `Container.decision_repository()` and
 `Container.decision_service()`. The container supplies `JsonDecisionRepository` and
 `JsonObservationRepository` to `DecisionService`; Decision CLI handlers resolve the service and do
 not construct repositories.
+
+The acceptance foundation is wired through `Container.decision_acceptance_repository()` and
+`Container.decision_acceptance_service()`. The container supplies
+`JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
+`DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.

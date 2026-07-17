@@ -103,14 +103,15 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `7724342` implements the immutable `Decision` and embedded `EvidenceReference`, a
-persistence-focused repository port and JSON adapter, `DecisionService`, container wiring, and
-thin `neural decision add/list/show` commands. The service owns Observation and supersession
-validation plus load-and-filter idempotency; the CLI constructs no repositories.
+Source commit `9d5d47b` implements separate immutable `Decision` and `DecisionAcceptance` records,
+embedded `EvidenceReference`, persistence-focused ports and JSON adapters, application services,
+container wiring, and thin proposal/acceptance CLI commands. Acceptance explicitly authorizes
+possible future execution; it does not execute or mutate the Decision.
 
-`DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only.
-There is no ingestion, automatic learning, lifecycle replay, or Consigliere integration. The
-authoritative implemented contract and future boundary are defined in
+`DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only. Only `proposed` and
+`accepted` can currently be derived. There is no execution, reversal, ingestion, automatic
+learning, full lifecycle replay, or Consigliere integration. The authoritative implemented
+contract and future boundary are defined in
 `handbook/architecture/decision-learning.md`.
 
 ---
@@ -119,30 +120,38 @@ authoritative implemented contract and future boundary are defined in
 
 ## Status and purpose
 
-NeuralEngine source commit `7724342` implements the Decision foundation. It records an immutable
-proposed choice and bounded evidence references, persists Decisions, exposes application use
-cases, wires them through the container, and provides a thin CLI.
+NeuralEngine source commit `9d5d47b` implements the Decision and DecisionAcceptance foundations.
+They record an immutable proposed choice followed by explicit authorization for possible future
+execution. Both foundations persist immutable records, expose application use cases, are wired
+through the container, and provide a thin CLI.
 
 The wider Decision Learning lifecycle remains accepted future architecture. Decision tracking
 complements the existing Observation-to-Playbook chain; it does not replace it.
 
 ## Implemented foundation
 
-The implemented slice is exactly:
+The implemented foundations are exactly:
 
 ```text
 Decision
 EvidenceReference
+DecisionAcceptance
 DecisionRepository
+DecisionAcceptanceRepository
 JsonDecisionRepository
+JsonDecisionAcceptanceRepository
 DecisionService
+DecisionAcceptanceService
 container wiring
 neural decision add/list/show
+neural decision accept
+neural decision acceptance-history
 ```
 
-Creating a Decision records a proposal. It does not accept or execute the proposal and does not
-create any downstream learning record. `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`,
-and `DecisionReview` are future-only records.
+Creating a Decision records a proposal. Creating a DecisionAcceptance explicitly authorizes that
+proposal for possible future execution. Neither operation executes the Decision or creates a
+downstream learning record. `DecisionAction`, `DecisionOutcome`, and `DecisionReview` are
+future-only records.
 
 ## Decision model
 
@@ -184,7 +193,8 @@ not rewrite the earlier record.
 
 ## EvidenceReference
 
-`EvidenceReference` is an implemented immutable value embedded in a Decision:
+`EvidenceReference` is an implemented immutable value embedded in a Decision or
+DecisionAcceptance:
 
 ```text
 kind
@@ -203,6 +213,48 @@ The complete value is serialized inside Decision JSON.
 There is no Evidence repository, service, or CLI. A locator is retained as provenance only: the
 Decision CLI does not open it, verify it, or ingest its content.
 
+## DecisionAcceptance foundation
+
+`DecisionAcceptance` is an immutable domain model with these implemented fields:
+
+```text
+id
+accepted_at
+decision_id
+accepted_by
+reason
+evidence_references
+idempotency_key
+tags
+```
+
+Its implemented invariants are:
+
+1. `decision_id` is a valid UUID.
+2. `accepted_by` is trimmed and non-blank.
+3. `reason` is trimmed and non-blank.
+4. `idempotency_key` is trimmed and non-blank.
+5. `accepted_at` is timezone-aware and normalized to UTC.
+6. Tags are trimmed, reject blanks, and remove case-insensitive duplicates while preserving
+   first-seen order.
+7. Evidence references reuse the existing immutable `EvidenceReference`.
+8. The model is immutable.
+9. No mutable lifecycle status exists.
+10. Acceptance does not embed or mutate the Decision payload.
+
+The semantic boundary is exact:
+
+```text
+Decision
+= proposed choice
+
+DecisionAcceptance
+= explicit authorization for possible future execution
+```
+
+Acceptance does not mean execution occurred, a DecisionAction exists, a DecisionOutcome exists, a
+DecisionReview exists, or learning was created.
+
 ## Persistence
 
 The persistence-focused `DecisionRepository` port implements only:
@@ -219,6 +271,21 @@ and optional values round-trip through the domain model. `load_all()` sorts file
 deterministic order. Malformed stored data surfaces domain validation errors; the adapter does not
 silently repair it. No migration, evidence ingestion, file ingestion, or git ingestion behavior
 exists.
+
+The persistence-focused `DecisionAcceptanceRepository` likewise implements only:
+
+```text
+save()
+load_all()
+get_by_id()
+```
+
+It has no relation, project, or idempotency query methods. Relation and eligibility filtering
+belong to `DecisionAcceptanceService`. `JsonDecisionAcceptanceRepository` stores one JSON file per
+acceptance under `NeuralPaths.DECISION_ACCEPTANCES`, and Brain initialization creates that
+directory. `load_all()` sorts file names for deterministic order. UUIDs, UTC-aware timestamps,
+embedded evidence, and normalized tags round-trip through domain validation. Malformed stored data
+surfaces validation errors. No migration or ingestion behavior exists.
 
 ## Application service
 
@@ -266,6 +333,62 @@ EvidenceReference.captured_at
 in the application layer; a blank filter fails visibly. `show()` loads by UUID and raises the
 existing explicit not-found error when no Decision exists.
 
+### DecisionAcceptanceService
+
+`DecisionAcceptanceService` implements:
+
+```text
+accept()
+list_for_decision()
+show()
+```
+
+`accept()` validates that the referenced Decision exists, constructs an immutable candidate, loads
+all acceptance records, handles an equivalent idempotent replay, rejects conflicting key reuse,
+rejects a second distinct acceptance, and persists only after validation. It does not mutate the
+Decision and creates no action, outcome, review, or learning record.
+
+The initial monotonic eligibility rule is:
+
+```text
+Decision exists
+and no DecisionAcceptance exists
+→ eligible for first acceptance
+```
+
+Only one acceptance per Decision is allowed. A superseding Decision does not invalidate an
+existing acceptance. There is no rejection, withdrawal, reversal, reopening, cancellation, or
+replacement behavior.
+
+The implemented idempotency scope is:
+
+```text
+(decision_id, "decision_acceptance", idempotency_key)
+```
+
+```text
+same scoped key + equivalent semantic payload
+→ return existing DecisionAcceptance
+
+same scoped key + different semantic payload
+→ visible idempotency conflict, no write
+
+different key + Decision already accepted
+→ visible already-accepted conflict, no write
+```
+
+Semantic equivalence excludes:
+
+```text
+DecisionAcceptance.id
+DecisionAcceptance.accepted_at
+EvidenceReference.captured_at
+```
+
+`list_for_decision()` validates Decision existence, loads all acceptance records, filters in the
+application layer, and preserves repository order without adding a repository query. `show()`
+raises an explicit acceptance not-found error.
+
 ## Container
 
 The composition root constructs and connects:
@@ -274,19 +397,24 @@ The composition root constructs and connects:
 JsonDecisionRepository
 JsonObservationRepository
 DecisionService
+JsonDecisionAcceptanceRepository
+DecisionAcceptanceService
 ```
 
-The CLI resolves `DecisionService` from the container. It does not construct repositories or own
-validation, relation checks, persistence, or idempotency policy.
+`DecisionAcceptanceService` receives `JsonDecisionAcceptanceRepository` and
+`JsonDecisionRepository`. The CLI resolves services from the container. It does not construct
+repositories or own validation, relation checks, persistence, eligibility, or idempotency policy.
 
 ## Implemented CLI
 
-These commands exist at commit `7724342`:
+These commands exist at commit `9d5d47b`:
 
 ```text
 neural decision add
 neural decision list
 neural decision show DECISION_UUID
+neural decision accept DECISION_UUID
+neural decision acceptance-history DECISION_UUID
 ```
 
 `neural decision add` requires these scalar options:
@@ -351,6 +479,52 @@ Proposed by
 `neural decision show DECISION_UUID` renders the full Decision details, including alternatives,
 Observation IDs, embedded evidence references, optional supersession, idempotency key, and tags.
 
+### Decision acceptance commands
+
+`neural decision accept DECISION_UUID` requires:
+
+```text
+DECISION_UUID
+--accepted-by
+--reason
+--idempotency-key
+```
+
+It accepts repeatable optional values:
+
+```text
+--evidence
+--tag
+```
+
+For example:
+
+```bash
+neural decision accept DECISION_UUID \
+  --accepted-by architecture-owner \
+  --reason "Approved after architecture review" \
+  --idempotency-key decision-acceptance-1 \
+  --evidence '{"kind":"manual_decision","locator":"approval:architecture-review"}' \
+  --tag architecture
+```
+
+The CLI parses and validates `EvidenceReference`, but does not read the locator or ingest locator
+content. Business rules remain in `DecisionAcceptanceService`. Success prints the stored
+acceptance ID.
+
+`neural decision acceptance-history DECISION_UUID` validates the Decision through the service and
+renders:
+
+```text
+ID
+Accepted
+Decision ID
+Accepted by
+Reason
+```
+
+An existing Decision with no acceptance produces a controlled empty state.
+
 ## Future lifecycle boundary
 
 The accepted future record family remains deliberately separate:
@@ -364,19 +538,27 @@ Decision
 ```
 
 - `Decision` is the implemented proposed choice.
-- `DecisionAcceptance` would explicitly authorize execution.
+- `DecisionAcceptance` is the implemented explicit authorization for possible future execution.
 - `DecisionAction` would record work performed under an accepted Decision.
 - `DecisionOutcome` would record factual results and validation evidence.
 - `DecisionReview` would assess outcomes and hold candidate lessons.
 
-Only the first record exists. The future records must remain immutable semantic records rather
+Only the first two records exist. Future records must remain immutable semantic records rather
 than fields on a mutable Decision or a duplicate generic event stream. A proposed option is not an
-acceptance, an outcome is not an Experience, and candidate lessons are not automatically Knowledge
-or a Playbook change.
+acceptance, acceptance is not execution, an outcome is not an Experience, and candidate lessons
+are not automatically Knowledge or a Playbook change.
 
-The intended future projection is `proposed → accepted → executed → reviewed`, derived by an
-application service from future records. Commit `7724342` implements no lifecycle replay or
-projection service.
+The currently derivable projection is only:
+
+```text
+Decision without acceptance
+→ proposed
+
+Decision with one valid acceptance
+→ accepted
+```
+
+There is no execution state, reviewed state, or generic full lifecycle replay service.
 
 ## Relationship to the domain chain
 
@@ -386,7 +568,7 @@ Decision remains an explicit future bridge:
 ```text
 Observation
 → Decision
-→ future DecisionAcceptance
+→ DecisionAcceptance
 → future DecisionAction
 → future DecisionOutcome
 → future DecisionReview
@@ -414,7 +596,7 @@ prompt
 → post-work lesson
 ```
 
-Commit `7724342` does not capture or ingest those events. Automatic candidates and manual
+Commit `9d5d47b` does not capture or ingest those events. Automatic candidates and manual
 confirmation remain future concepts; no automatic persistence, ingestion, or learning exists.
 
 Consigliere also remains future-only. It may later advise. No Consigliere integration exists, and
@@ -422,15 +604,20 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `7724342` does not implement:
+Commit `9d5d47b` does not implement:
 
 ```text
-DecisionAcceptance
 DecisionAction
 DecisionOutcome
 DecisionReview
-decision lifecycle replay
-evidence repository
+decision execution
+rejection
+withdrawal
+reversal
+reopening
+cancellation
+replacement
+full lifecycle replay
 file ingestion
 git ingestion
 automatic Observation creation
@@ -441,18 +628,20 @@ automatic evolution
 Consigliere integration
 ```
 
-It also does not execute commands referenced by evidence, open locators, accept Decisions,
-materialize Playbook revisions, or create any record other than the explicitly requested Decision.
+It also does not execute commands referenced by evidence, open locators, automatically accept
+Decisions, materialize Playbook revisions, or create records beyond an explicitly requested
+Decision or DecisionAcceptance. Explicit `neural decision accept` is the only implemented
+authorization use case.
 
 ## Recommended next milestone
 
 The one recommended next controlled slice is:
 
 ```text
-DecisionAcceptance foundation
+DecisionAction foundation
 ```
 
-It must remain separate from `DecisionAction` and `DecisionOutcome`.
+It must remain separate from `DecisionOutcome` and `DecisionReview`.
 
 ## Handbook synchronization policy
 
@@ -519,12 +708,13 @@ Confirmed example:
 
 ## Complementary Decision Learning chain
 
-The implemented Decision foundation records a bounded proposed choice after Observation context:
+The implemented Decision and DecisionAcceptance foundations record a bounded proposed choice and
+explicit authorization after Observation context:
 
 ```text
 Observation
 → Decision
-→ future DecisionAcceptance
+→ DecisionAcceptance
 → future DecisionAction
 → future DecisionOutcome
 → future DecisionReview
@@ -534,8 +724,9 @@ Observation
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
 DecisionOutcome is factual; Experience is interpreted; Knowledge is generalized; Playbook remains
-a separately created repeatable procedure. Only Decision and its embedded EvidenceReference exist
-at source commit `7724342`; no transition in this path is automatic.
+a separately created repeatable procedure. Decision, DecisionAcceptance, and their embedded
+EvidenceReference values exist at source commit `9d5d47b`; acceptance is explicit, and no later
+transition in this path is automatic.
 
 ---
 
@@ -1017,6 +1208,18 @@ embedded `EvidenceReference.captured_at`, are excluded from semantic comparison.
 application layer. `show()` owns the explicit not-found behavior. No lifecycle transition,
 automatic learning, or downstream record creation is part of this service.
 
+## Decision acceptance service ownership
+
+`DecisionAcceptanceService.accept()` validates Decision existence, constructs an immutable
+candidate, and uses `DecisionAcceptanceRepository.load_all()` for idempotency and first-acceptance
+eligibility. The scope is `(decision_id, "decision_acceptance", idempotency_key)`. Equivalent
+semantic replay returns the existing record; conflicting reuse of the key and a distinct second
+acceptance both fail visibly without writing.
+
+`list_for_decision()` verifies the Decision, filters acceptance records in the application layer,
+and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
+does not mutate Decision or create actions, outcomes, reviews, execution, or learning.
+
 ---
 
 # Application Errors
@@ -1128,6 +1331,10 @@ Confirmed rule:
 Project filtering and idempotency detection belong to `DecisionService`; no project or idempotency
 query method is part of the port.
 
+`DecisionAcceptanceRepository` is also limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision relation filtering, eligibility, and idempotency belong to
+`DecisionAcceptanceService`; no relation, project, or idempotency query method is part of the port.
+
 ## Repository return types
 
 Prefer:
@@ -1238,6 +1445,14 @@ under `NeuralPaths.DECISIONS`. UUIDs, timestamps, optional values, and embedded
 deterministic order, and malformed data surfaces validation errors. The adapter performs no
 project filtering, idempotency query, migration, or ingestion.
 
+## Decision acceptance adapter
+
+`JsonDecisionAcceptanceRepository` implements `DecisionAcceptanceRepository` and stores one JSON
+file per acceptance under `NeuralPaths.DECISION_ACCEPTANCES`; Brain initialization creates the
+directory. UUIDs, timestamps, embedded evidence, and tags round-trip through domain validation.
+`load_all()` sorts file names for deterministic order, and malformed data surfaces validation
+errors. The adapter performs no relation filtering, eligibility decision, migration, or ingestion.
+
 ---
 
 # Dependency Injection and Container
@@ -1295,6 +1510,11 @@ The Decision foundation is wired through `Container.decision_repository()` and
 `Container.decision_service()`. The container supplies `JsonDecisionRepository` and
 `JsonObservationRepository` to `DecisionService`; Decision CLI handlers resolve the service and do
 not construct repositories.
+
+The acceptance foundation is wired through `Container.decision_acceptance_repository()` and
+`Container.decision_acceptance_service()`. The container supplies
+`JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
+`DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.
 
 ---
 
@@ -1885,11 +2105,11 @@ Status: Accepted
 
 ## Decision
 
-Development decision tracking uses an implemented immutable `Decision` with embedded immutable
-`EvidenceReference` values. `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
-`DecisionReview` remain separate future-only records. Any future lifecycle state is derived from
-those semantic records, not stored as mutable `Decision.status` or duplicated in a generic event
-stream.
+Development decision tracking uses implemented separate immutable `Decision` and
+`DecisionAcceptance` records with embedded immutable `EvidenceReference` values. `DecisionAction`,
+`DecisionOutcome`, and `DecisionReview` remain separate future-only records. Lifecycle state is
+derived from semantic records, not stored as mutable `Decision.status` or duplicated in a generic
+event stream.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -1903,7 +2123,9 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `7724342` implements only the Decision foundation and `neural decision
-  add/list/show`; it does not implement the later lifecycle.
-- The one recommended next milestone is `DecisionAcceptance foundation`, kept separate from
-  DecisionAction and DecisionOutcome.
+- Source commit `9d5d47b` implements Decision proposal and explicit acceptance foundations plus
+  their CLI. Only proposed and accepted states can currently be derived.
+- Acceptance is authorization for possible future execution; it is not execution or reversal and
+  creates no later lifecycle or learning record.
+- The one recommended next milestone is `DecisionAction foundation`, kept separate from
+  DecisionOutcome and DecisionReview.

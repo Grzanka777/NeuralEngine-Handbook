@@ -137,14 +137,15 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `7724342` implements the immutable `Decision` and embedded `EvidenceReference`, a
-persistence-focused repository port and JSON adapter, `DecisionService`, container wiring, and
-thin `neural decision add/list/show` commands. The service owns Observation and supersession
-validation plus load-and-filter idempotency; the CLI constructs no repositories.
+Source commit `9d5d47b` implements separate immutable `Decision` and `DecisionAcceptance` records,
+embedded `EvidenceReference`, persistence-focused ports and JSON adapters, application services,
+container wiring, and thin proposal/acceptance CLI commands. Acceptance explicitly authorizes
+possible future execution; it does not execute or mutate the Decision.
 
-`DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only.
-There is no ingestion, automatic learning, lifecycle replay, or Consigliere integration. The
-authoritative implemented contract and future boundary are defined in
+`DecisionAction`, `DecisionOutcome`, and `DecisionReview` remain future-only. Only `proposed` and
+`accepted` can currently be derived. There is no execution, reversal, ingestion, automatic
+learning, full lifecycle replay, or Consigliere integration. The authoritative implemented
+contract and future boundary are defined in
 `handbook/architecture/decision-learning.md`.
 
 ## Agent policy

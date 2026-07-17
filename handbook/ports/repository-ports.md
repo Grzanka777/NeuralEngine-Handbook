@@ -32,6 +32,10 @@ Confirmed rule:
 Project filtering and idempotency detection belong to `DecisionService`; no project or idempotency
 query method is part of the port.
 
+`DecisionAcceptanceRepository` is also limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision relation filtering, eligibility, and idempotency belong to
+`DecisionAcceptanceService`; no relation, project, or idempotency query method is part of the port.
+
 ## Repository return types
 
 Prefer:

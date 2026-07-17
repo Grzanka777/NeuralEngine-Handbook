@@ -40,3 +40,11 @@ under `NeuralPaths.DECISIONS`. UUIDs, timestamps, optional values, and embedded
 `EvidenceReference` values round-trip through domain validation. `load_all()` sorts file names for
 deterministic order, and malformed data surfaces validation errors. The adapter performs no
 project filtering, idempotency query, migration, or ingestion.
+
+## Decision acceptance adapter
+
+`JsonDecisionAcceptanceRepository` implements `DecisionAcceptanceRepository` and stores one JSON
+file per acceptance under `NeuralPaths.DECISION_ACCEPTANCES`; Brain initialization creates the
+directory. UUIDs, timestamps, embedded evidence, and tags round-trip through domain validation.
+`load_all()` sorts file names for deterministic order, and malformed data surfaces validation
+errors. The adapter performs no relation filtering, eligibility decision, migration, or ingestion.

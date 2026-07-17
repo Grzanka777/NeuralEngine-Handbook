@@ -91,6 +91,18 @@ embedded `EvidenceReference.captured_at`, are excluded from semantic comparison.
 application layer. `show()` owns the explicit not-found behavior. No lifecycle transition,
 automatic learning, or downstream record creation is part of this service.
 
+## Decision acceptance service ownership
+
+`DecisionAcceptanceService.accept()` validates Decision existence, constructs an immutable
+candidate, and uses `DecisionAcceptanceRepository.load_all()` for idempotency and first-acceptance
+eligibility. The scope is `(decision_id, "decision_acceptance", idempotency_key)`. Equivalent
+semantic replay returns the existing record; conflicting reuse of the key and a distinct second
+acceptance both fail visibly without writing.
+
+`list_for_decision()` verifies the Decision, filters acceptance records in the application layer,
+and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
+does not mutate Decision or create actions, outcomes, reviews, execution, or learning.
+
 ---
 
 # Application Errors
@@ -202,6 +214,10 @@ Confirmed rule:
 Project filtering and idempotency detection belong to `DecisionService`; no project or idempotency
 query method is part of the port.
 
+`DecisionAcceptanceRepository` is also limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision relation filtering, eligibility, and idempotency belong to
+`DecisionAcceptanceService`; no relation, project, or idempotency query method is part of the port.
+
 ## Repository return types
 
 Prefer:
@@ -312,6 +328,14 @@ under `NeuralPaths.DECISIONS`. UUIDs, timestamps, optional values, and embedded
 deterministic order, and malformed data surfaces validation errors. The adapter performs no
 project filtering, idempotency query, migration, or ingestion.
 
+## Decision acceptance adapter
+
+`JsonDecisionAcceptanceRepository` implements `DecisionAcceptanceRepository` and stores one JSON
+file per acceptance under `NeuralPaths.DECISION_ACCEPTANCES`; Brain initialization creates the
+directory. UUIDs, timestamps, embedded evidence, and tags round-trip through domain validation.
+`load_all()` sorts file names for deterministic order, and malformed data surfaces validation
+errors. The adapter performs no relation filtering, eligibility decision, migration, or ingestion.
+
 ---
 
 # Dependency Injection and Container
@@ -369,6 +393,11 @@ The Decision foundation is wired through `Container.decision_repository()` and
 `Container.decision_service()`. The container supplies `JsonDecisionRepository` and
 `JsonObservationRepository` to `DecisionService`; Decision CLI handlers resolve the service and do
 not construct repositories.
+
+The acceptance foundation is wired through `Container.decision_acceptance_repository()` and
+`Container.decision_acceptance_service()`. The container supplies
+`JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
+`DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.
 
 ---
 

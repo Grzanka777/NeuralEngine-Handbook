@@ -88,3 +88,15 @@ embedded `EvidenceReference.captured_at`, are excluded from semantic comparison.
 `list_decisions()` preserves repository order and may filter by a non-blank project key in the
 application layer. `show()` owns the explicit not-found behavior. No lifecycle transition,
 automatic learning, or downstream record creation is part of this service.
+
+## Decision acceptance service ownership
+
+`DecisionAcceptanceService.accept()` validates Decision existence, constructs an immutable
+candidate, and uses `DecisionAcceptanceRepository.load_all()` for idempotency and first-acceptance
+eligibility. The scope is `(decision_id, "decision_acceptance", idempotency_key)`. Equivalent
+semantic replay returns the existing record; conflicting reuse of the key and a distinct second
+acceptance both fail visibly without writing.
+
+`list_for_decision()` verifies the Decision, filters acceptance records in the application layer,
+and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
+does not mutate Decision or create actions, outcomes, reviews, execution, or learning.

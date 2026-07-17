@@ -4,11 +4,11 @@ Status: Accepted
 
 ## Decision
 
-Development decision tracking uses an implemented immutable `Decision` with embedded immutable
-`EvidenceReference` values. `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and
-`DecisionReview` remain separate future-only records. Any future lifecycle state is derived from
-those semantic records, not stored as mutable `Decision.status` or duplicated in a generic event
-stream.
+Development decision tracking uses implemented separate immutable `Decision` and
+`DecisionAcceptance` records with embedded immutable `EvidenceReference` values. `DecisionAction`,
+`DecisionOutcome`, and `DecisionReview` remain separate future-only records. Lifecycle state is
+derived from semantic records, not stored as mutable `Decision.status` or duplicated in a generic
+event stream.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -22,7 +22,9 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `7724342` implements only the Decision foundation and `neural decision
-  add/list/show`; it does not implement the later lifecycle.
-- The one recommended next milestone is `DecisionAcceptance foundation`, kept separate from
-  DecisionAction and DecisionOutcome.
+- Source commit `9d5d47b` implements Decision proposal and explicit acceptance foundations plus
+  their CLI. Only proposed and accepted states can currently be derived.
+- Acceptance is authorization for possible future execution; it is not execution or reversal and
+  creates no later lifecycle or learning record.
+- The one recommended next milestone is `DecisionAction foundation`, kept separate from
+  DecisionOutcome and DecisionReview.
