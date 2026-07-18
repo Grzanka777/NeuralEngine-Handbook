@@ -99,6 +99,7 @@ def build(root: Path) -> list[Path]:
         paths.handbook / "domain/playbook-revision.md",
         paths.handbook / "domain/playbook-revision-activation.md",
         paths.handbook / "domain/playbook-revision-application.md",
+        paths.handbook / "domain/decision-outcome.md",
     ]
 
     application_files = [

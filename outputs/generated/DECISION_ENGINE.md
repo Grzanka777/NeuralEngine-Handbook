@@ -104,11 +104,11 @@ New behavior
 
 ## Status and purpose
 
-NeuralEngine source commit `1964356` implements the Decision, DecisionAcceptance, and
-DecisionAction foundations plus the canonical minimal `DecisionLifecycleService` projection. They
-record an immutable proposed choice, explicit authorization, and work performed under that
-authorization. Each foundation persists immutable records, exposes application use cases, is
-wired through the container, and provides a thin CLI.
+NeuralEngine source commit `5befd7c` implements the Decision, DecisionAcceptance,
+DecisionAction, and DecisionOutcome foundations plus the canonical `DecisionLifecycleService`
+projection. They record an immutable proposed choice, explicit authorization, work performed under
+that authorization, and factual results. Each foundation persists immutable records, exposes
+application use cases, is wired through the container, and provides a thin CLI.
 
 The wider Decision Learning lifecycle remains accepted future architecture. Decision tracking
 complements the existing Observation-to-Playbook chain; it does not replace it.
@@ -122,15 +122,20 @@ Decision
 EvidenceReference
 DecisionAcceptance
 DecisionAction
+DecisionOutcome
 DecisionRepository
 DecisionAcceptanceRepository
 DecisionActionRepository
+DecisionOutcomeRepository
 JsonDecisionRepository
 JsonDecisionAcceptanceRepository
 JsonDecisionActionRepository
+JsonDecisionOutcomeRepository
 DecisionService
 DecisionAcceptanceService
 DecisionActionService
+DecisionOutcomeService
+DecisionOutcomeSummary
 DecisionLifecycleService
 container wiring
 neural decision add/list/show
@@ -139,13 +144,18 @@ neural decision acceptance-history
 neural decision action add
 neural decision action-history
 neural decision action-show
+neural decision outcome add
+neural decision outcome-history
+neural decision outcome-show
+neural decision outcome-summary
 neural decision state
 ```
 
 Creating a Decision records a proposal. Creating a DecisionAcceptance explicitly authorizes that
 proposal for possible future work. Creating a DecisionAction records work performed under that
-acceptance. None of these operations claims completion, success, failure, outcome, review, or
-learning. `DecisionOutcome` and `DecisionReview` are future-only records.
+acceptance. Creating a DecisionOutcome records factual results and validation evidence for one or
+more linked actions. None of these operations performs review or learning. `DecisionReview`
+remains future-only.
 
 ## Decision model
 
@@ -188,7 +198,7 @@ not rewrite the earlier record.
 ## EvidenceReference
 
 `EvidenceReference` is an implemented immutable value embedded in a Decision,
-DecisionAcceptance, or DecisionAction:
+DecisionAcceptance, DecisionAction, or DecisionOutcome:
 
 ```text
 kind
@@ -293,8 +303,48 @@ DecisionAction
 
 It does not mean the work succeeded, validation passed, an intended result occurred,
 DecisionOutcome exists, DecisionReview exists, or learning was created. `completed_at` means only
-that the described work interval ended. It does not produce a `completed`, `executed`, or
-`succeeded` lifecycle state.
+that the described work interval ended. It does not by itself produce a `completed`, `executed`,
+or `succeeded` lifecycle state.
+
+## DecisionOutcome foundation
+
+`DecisionOutcome` is an immutable factual result and validation record with these exact
+implemented fields:
+
+```text
+id
+recorded_at
+decision_id
+acceptance_id
+action_ids
+result
+summary
+validated_by
+validated_at
+evidence_references
+metrics
+idempotency_key
+tags
+```
+
+Its implemented invariants are:
+
+1. Decision, acceptance, and action IDs are valid UUIDs.
+2. At least one action ID is required; action IDs are ordered and unique.
+3. `result` is exactly `succeeded`, `failed`, `partial`, or `unknown`.
+4. `summary`, `validated_by`, and `idempotency_key` are trimmed and non-blank.
+5. `recorded_at` and `validated_at` are timezone-aware and normalized to UTC.
+6. Metrics contain at most 100 scalar `int | float | str | bool` values.
+7. Metric keys are trimmed, non-blank, at most 64 characters, and case-insensitively unique.
+8. Float metrics are finite, string metrics are bounded to 1000 characters, and nested values are
+   rejected.
+9. The metric mapping is immutable and serialized in deterministic key order.
+10. Tags and evidence use the existing normalization and immutable `EvidenceReference` rules.
+11. The model is immutable and has no mutable lifecycle status.
+
+One Decision may have multiple outcomes. Each outcome appends factual history and may link one or
+more actions; no outcome replaces or mutates an earlier record. An outcome does not mean review,
+Experience, Knowledge, Playbook change, or automatic learning occurred.
 
 ## Persistence
 
@@ -342,6 +392,21 @@ under `NeuralPaths.DECISION_ACTIONS`, and Brain initialization creates that dire
 `load_all()` sorts file names for deterministic order. The complete domain record round-trips
 through validation, and malformed stored data fails visibly. The adapter performs no migration,
 ingestion, or command execution.
+
+The persistence-focused `DecisionOutcomeRepository` also implements only:
+
+```text
+save()
+load_all()
+get_by_id()
+```
+
+It has no relation, idempotency, latest-outcome, summary, or lifecycle query methods.
+`JsonDecisionOutcomeRepository` stores one deterministic JSON file per outcome under
+`NeuralPaths.DECISION_OUTCOMES`, and Brain initialization creates that directory. Complete records
+and immutable scalar metrics round-trip through domain validation; malformed data fails visibly.
+The adapter performs no relation filtering, lifecycle projection, review, learning, migration, or
+ingestion.
 
 ## Application service
 
@@ -497,6 +562,54 @@ EvidenceReference.captured_at
 `list_for_decision()` validates the Decision, filters `load_all()` in the application layer, and
 preserves repository order. `show()` raises an explicit action-not-found error.
 
+### DecisionOutcomeService
+
+`DecisionOutcomeService` implements:
+
+```text
+add()
+list_for_decision()
+show()
+summary_for_decision()
+```
+
+`add()` validates Decision existence, acceptance existence and ownership, at least one unique
+action, and every action's Decision and acceptance relations. `validated_at` cannot precede the
+earliest linked action start. Only after relation validation does the service construct and save
+the immutable outcome. It mutates no related record and creates no Review or learning artifact.
+
+Outcome idempotency is scoped by:
+
+```text
+(decision_id, "decision_outcome", idempotency_key)
+```
+
+```text
+same scoped key + equivalent semantic payload
+→ return existing DecisionOutcome
+
+same scoped key + different semantic payload
+→ visible conflict, no write
+
+different key
+→ another outcome may be recorded
+```
+
+Semantic equivalence excludes `DecisionOutcome.id`, `DecisionOutcome.recorded_at`, and embedded
+`EvidenceReference.captured_at`. It includes the linked relations, result, validation data,
+metrics, and other caller-supplied semantic fields.
+
+`list_for_decision()` validates the Decision, filters `load_all()` in the application layer, and
+preserves repository order so the complete multiple-outcome history remains visible. `show()`
+raises an explicit outcome-not-found error.
+
+`DecisionOutcomeSummary` is an immutable, non-persisted application read model returned by
+`summary_for_decision()`. It reports outcome count, latest result and validation time, distinct
+linked-action count, counts for each result value, and success/failure presence. Summary derivation
+validates every persisted outcome-to-acceptance/action relation. Latest selection is deterministic
+by `(validated_at, outcome.id)` and never depends on repository order. The summary is derived on
+demand and is neither persisted nor cached.
+
 ### Canonical DecisionLifecycleService
 
 `DecisionLifecycleService` is the only canonical owner of the current lifecycle projection. It
@@ -506,6 +619,7 @@ depends on:
 DecisionRepository
 DecisionAcceptanceRepository
 DecisionActionRepository
+DecisionOutcomeRepository
 ```
 
 It derives exactly:
@@ -519,21 +633,25 @@ Decision exists, one valid acceptance, no action
 
 Decision exists, one valid acceptance, at least one valid action
 → in_progress
+
+latest valid outcome has result succeeded
+→ succeeded
+
+latest valid outcome has result failed
+→ failed
+
+latest valid outcome has result partial
+→ partial
+
+latest valid outcome has result unknown
+→ outcome_unknown
 ```
 
-No mutable status is written and no generic event stream exists. Repository order does not define
-state; valid semantic relations do. Multiple persisted acceptances fail visibly, as does an action
-linked to a wrong or missing acceptance. Multiple valid actions still derive `in_progress`.
-
-These states are explicitly unavailable:
-
-```text
-executed
-completed
-succeeded
-failed
-reviewed
-```
+No mutable status is written and no generic event stream exists. The latest outcome is selected by
+`(validated_at, outcome.id)`, never repository order. Multiple persisted acceptances fail visibly,
+as do invalid action or outcome relations. Multiple valid actions with no outcome derive
+`in_progress`; multiple outcomes retain history while the latest valid one drives the projection.
+There is no generic `executed`, `completed`, `resolved`, or `reviewed` state.
 
 ## Container
 
@@ -548,6 +666,8 @@ DecisionAcceptanceService
 JsonDecisionActionRepository
 JsonPlaybookRunRepository
 DecisionActionService
+JsonDecisionOutcomeRepository
+DecisionOutcomeService
 DecisionLifecycleService
 ```
 
@@ -556,13 +676,14 @@ DecisionLifecycleService
 repositories or own validation, relation checks, persistence, eligibility, or idempotency policy.
 
 `DecisionActionService` receives `JsonDecisionActionRepository`, `JsonDecisionRepository`,
-`JsonDecisionAcceptanceRepository`, and `JsonPlaybookRunRepository`. `DecisionLifecycleService`
-receives the Decision, acceptance, and action repositories. CLI handlers resolve both services
-from the container and construct no repositories.
+`JsonDecisionAcceptanceRepository`, and `JsonPlaybookRunRepository`. `DecisionOutcomeService`
+receives `JsonDecisionOutcomeRepository` plus Decision, acceptance, and action repositories.
+`DecisionLifecycleService` receives the Decision, acceptance, action, and outcome repositories.
+CLI handlers resolve services from the container and construct no repositories.
 
 ## Implemented CLI
 
-These commands exist at commit `1964356`:
+These commands exist at commit `5befd7c`:
 
 ```text
 neural decision add
@@ -573,6 +694,10 @@ neural decision acceptance-history DECISION_UUID
 neural decision action add DECISION_UUID
 neural decision action-history DECISION_UUID
 neural decision action-show ACTION_UUID
+neural decision outcome add DECISION_UUID
+neural decision outcome-history DECISION_UUID
+neural decision outcome-show OUTCOME_UUID
+neural decision outcome-summary DECISION_UUID
 neural decision state DECISION_UUID
 ```
 
@@ -684,7 +809,7 @@ Reason
 
 An existing Decision with no acceptance produces a controlled empty state.
 
-### Decision action and state commands
+### Decision action commands
 
 `neural decision action add DECISION_UUID` requires:
 
@@ -725,19 +850,49 @@ Summary
 An existing Decision with no actions produces a controlled empty state.
 `neural decision action-show ACTION_UUID` renders every DecisionAction field.
 
+### Decision outcome and state commands
+
+`neural decision outcome add DECISION_UUID` requires:
+
+```text
+--acceptance-id
+--action-id (one or more)
+--result
+--summary
+--validated-by
+--validated-at
+--idempotency-key
+```
+
+Repeated `--evidence`, `--metric KEY=VALUE`, and `--tag` values are optional. Result accepts only
+`succeeded`, `failed`, `partial`, or `unknown`. Metrics parse unambiguous booleans, integers, and
+finite floats; other values remain strings and domain validation enforces the scalar bounds. The
+CLI reads no evidence locator and executes no referenced command.
+
+`neural decision outcome-history DECISION_UUID` renders all matching outcomes in repository order,
+including their result, validation time, linked action IDs, validator, and summary. An existing
+Decision with no outcomes produces a controlled empty state. `outcome-show OUTCOME_UUID` renders
+every stored field, including evidence, metrics, idempotency key, and tags.
+
+`neural decision outcome-summary DECISION_UUID` renders the derived count, deterministic latest
+result/time, distinct linked-action count, counts by result, and success/failure presence. It does
+not persist the summary.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
 proposed
 accepted
 in_progress
+succeeded
+failed
+partial
+outcome_unknown
 ```
 
-It renders no later lifecycle state.
+## Review and learning boundary
 
-## Future lifecycle boundary
-
-The accepted future record family remains deliberately separate:
+The record family remains deliberately separate:
 
 ```text
 Decision
@@ -750,13 +905,13 @@ Decision
 - `Decision` is the implemented proposed choice.
 - `DecisionAcceptance` is the implemented explicit authorization for possible future execution.
 - `DecisionAction` is the implemented record of work performed under an accepted Decision.
-- `DecisionOutcome` would record factual results and validation evidence.
+- `DecisionOutcome` is the implemented factual result and validation evidence record.
 - `DecisionReview` would assess outcomes and hold candidate lessons.
 
-Only the first three records exist. Future records must remain immutable semantic records rather
-than fields on a mutable Decision or a duplicate generic event stream. A proposed option is not an
-acceptance, acceptance is not execution, an outcome is not an Experience, and candidate lessons
-are not automatically Knowledge or a Playbook change.
+The first four records exist; DecisionReview does not. Records remain immutable semantic records
+rather than fields on a mutable Decision or a duplicate generic event stream. A proposed option is
+not an acceptance, acceptance is not execution, an outcome is not a review or Experience, and
+candidate lessons are not automatically Knowledge or a Playbook change.
 
 The currently derivable projection is only:
 
@@ -769,10 +924,23 @@ Decision with one valid acceptance
 
 Decision with one valid acceptance and at least one valid action
 → in_progress
+
+latest valid outcome succeeded
+→ succeeded
+
+latest valid outcome failed
+→ failed
+
+latest valid outcome partial
+→ partial
+
+latest valid outcome unknown
+→ outcome_unknown
 ```
 
-There is no executed, completed, succeeded, failed, or reviewed state. The minimal lifecycle
-projection is canonical, but there is no generic full lifecycle replay service.
+The lifecycle projection uses the latest valid outcome selected by `(validated_at, outcome.id)`.
+There is no generic executed, completed, resolved, or reviewed state and no generic full lifecycle
+event replay service.
 
 ## Relationship to the domain chain
 
@@ -784,7 +952,7 @@ Observation
 → Decision
 → DecisionAcceptance
 → DecisionAction
-→ future DecisionOutcome
+→ DecisionOutcome
 → future DecisionReview
 → explicitly created Experience
 → explicitly created Knowledge
@@ -812,18 +980,18 @@ prompt
 → post-work lesson
 ```
 
-Commit `1964356` does not capture or ingest those events. Automatic candidates and manual
-confirmation remain future concepts; no automatic persistence, ingestion, or learning exists.
+Commit `5befd7c` does not capture or ingest those events automatically. Automatic candidates and
+manual confirmation remain future concepts; no automatic persistence, ingestion, or learning
+exists.
 
 Consigliere also remains future-only. It may later advise. No Consigliere integration exists, and
 no recommendation can directly mutate NeuralEngine or authorize a durable record.
 
 ## Current non-behavior
 
-Commit `1964356` does not implement:
+Commit `5befd7c` does not implement:
 
 ```text
-DecisionOutcome
 DecisionReview
 execution engine
 command/shell execution
@@ -833,7 +1001,7 @@ reversal
 reopening
 cancellation
 replacement
-executed/completed/succeeded/failed/reviewed states
+executed/completed/resolved/reviewed states
 file ingestion
 git ingestion
 automatic Observation creation
@@ -846,17 +1014,19 @@ Consigliere integration
 
 It also does not execute commands referenced by evidence, open locators, automatically accept
 Decisions, materialize Playbook revisions, or infer outcomes from `completed_at`. Explicit user
-requests are required to create Decision, DecisionAcceptance, or DecisionAction records.
+requests are required to create Decision, DecisionAcceptance, DecisionAction, or DecisionOutcome
+records.
 
 ## Recommended next milestone
 
 The one recommended next controlled slice is:
 
 ```text
-DecisionOutcome foundation
+DecisionReview foundation
 ```
 
-It must remain separate from `DecisionReview`.
+It must remain separate from automatic Experience, Knowledge, Playbook, PlaybookEvaluation, or
+EvolutionProposal creation.
 
 ## Handbook synchronization policy
 
@@ -978,10 +1148,10 @@ Status: Accepted
 ## Decision
 
 Development decision tracking uses implemented separate immutable `Decision`,
-`DecisionAcceptance`, and `DecisionAction` records with embedded immutable `EvidenceReference`
-values. `DecisionOutcome` and `DecisionReview` remain separate future-only records. Lifecycle state
-is derived from semantic records, not stored as mutable status or duplicated in a generic event
-stream.
+`DecisionAcceptance`, `DecisionAction`, and `DecisionOutcome` records with embedded immutable
+`EvidenceReference` values. `DecisionReview` remains a separate future-only record. Lifecycle
+state is derived from semantic records, not stored as mutable status or duplicated in a generic
+event stream.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -995,11 +1165,14 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `1964356` implements Decision proposal, acceptance, action recording, and their
-  CLI plus the canonical `DecisionLifecycleService`.
-- Only proposed, accepted, and in-progress states can currently be derived. Action completion time
-  does not imply lifecycle completion, success, failure, outcome, or review.
+- Source commit `5befd7c` implements Decision proposal, acceptance, action and outcome recording,
+  outcome history/summary, their CLI, and the canonical `DecisionLifecycleService`.
+- The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
+  and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
+  repository order. No generic completed, resolved, or reviewed state exists.
 - Acceptance is authorization for possible future execution; it is not execution or reversal and
   creates no later lifecycle or learning record.
-- The one recommended next milestone is `DecisionOutcome foundation`, kept separate from
-  DecisionReview.
+- Multiple immutable outcomes may be appended for one Decision. Outcome creation is factual only
+  and creates no review or learning record.
+- The one recommended next milestone is `DecisionReview foundation`, kept separate from automatic
+  learning and downstream Experience, Knowledge, or Playbook creation.

@@ -103,7 +103,7 @@ acceptance both fail visibly without writing.
 and preserves repository order. `show()` owns explicit acceptance not-found behavior. Acceptance
 does not mutate Decision or create actions, outcomes, reviews, execution, or learning.
 
-## Decision action and lifecycle ownership
+## Decision action ownership
 
 `DecisionActionService.add()` validates the Decision, matching acceptance, and optional
 PlaybookRun before creating an immutable action. It uses
@@ -115,10 +115,28 @@ multiple distinct actions, and mutates no related record. PlaybookRun and Playbo
 `show()` owns explicit action-not-found behavior. The service creates no Outcome, Review, or
 learning record.
 
+## Decision outcome and lifecycle ownership
+
+`DecisionOutcomeService.add()` validates the Decision, matching acceptance, one or more unique
+actions, each action's Decision and acceptance relations, and validation time against the earliest
+linked action start before constructing or saving an immutable outcome. It uses
+`(decision_id, "decision_outcome", idempotency_key)` for application-layer idempotency. Equivalent
+replay returns the existing outcome; conflicting reuse fails without a write; another key may
+append another outcome for the same Decision.
+
+`list_for_decision()` validates the Decision and returns all matching outcomes in repository order.
+`show()` owns explicit outcome-not-found behavior. `summary_for_decision()` validates persisted
+outcome relations and returns an immutable, non-persisted `DecisionOutcomeSummary` with outcome
+count, deterministic latest result/time, distinct linked-action count, counts by result, and
+success/failure presence. Latest selection uses `(validated_at, outcome.id)` rather than repository
+order.
+
 `DecisionLifecycleService` is the only canonical projection owner. It validates persisted
-Decision/acceptance/action relations and derives only `proposed`, `accepted`, or `in_progress`.
-It writes no status, ignores repository order for state, and exposes no completed, succeeded,
-failed, or reviewed state.
+Decision/acceptance/action/outcome relations and derives exactly `proposed`, `accepted`,
+`in_progress`, `succeeded`, `failed`, `partial`, or `outcome_unknown`. When outcomes exist, the
+latest is selected by `(validated_at, outcome.id)`. It writes no status and exposes no generic
+`completed`, `resolved`, or reviewed state. Outcome creation and projection create no Review or
+learning record.
 
 ---
 
@@ -238,6 +256,11 @@ Decision relation filtering, eligibility, and idempotency belong to
 `DecisionActionRepository` is limited to `save()`, `load_all()`, and `get_by_id()`.
 Relation validation, Decision filtering, idempotency, and lifecycle projection belong to
 application services; no relation, idempotency, or lifecycle query method is part of the port.
+
+`DecisionOutcomeRepository` is limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision filtering, acceptance/action relation validation, multiple-outcome history, idempotency,
+summary derivation, and lifecycle projection belong to application services; no relation,
+idempotency, summary, latest-outcome, or lifecycle query method is part of the port.
 
 ## Repository return types
 
@@ -365,6 +388,16 @@ DecisionAction records round-trip through domain validation. `load_all()` sorts 
 deterministic order, and malformed data surfaces validation errors. The adapter performs no
 relation filtering, lifecycle projection, migration, ingestion, or command execution.
 
+## Decision outcome adapter
+
+`JsonDecisionOutcomeRepository` implements `DecisionOutcomeRepository` and stores one JSON file
+per outcome under `NeuralPaths.DECISION_OUTCOMES`; Brain initialization creates the directory.
+Complete DecisionOutcome records, including immutable scalar metrics, round-trip through domain
+validation. JSON object keys and metric keys are serialized deterministically, `load_all()` sorts
+file names, and malformed data surfaces validation errors. The adapter performs no relation
+validation or filtering, latest-outcome selection, summary or lifecycle projection, idempotency
+decision, migration, ingestion, review, or learning.
+
 ---
 
 # Dependency Injection and Container
@@ -428,11 +461,15 @@ The acceptance foundation is wired through `Container.decision_acceptance_reposi
 `JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
 `DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.
 
-The action foundation is wired through `Container.decision_action_repository()`,
-`Container.decision_action_service()`, and `Container.decision_lifecycle_service()`. The action
-service receives JSON action, Decision, acceptance, and PlaybookRun repositories. The lifecycle
-service receives Decision, acceptance, and action repositories. CLI handlers resolve services and
-construct no repositories.
+The action foundation is wired through `Container.decision_action_repository()` and
+`Container.decision_action_service()`. The action service receives JSON action, Decision,
+acceptance, and PlaybookRun repositories.
+
+The outcome foundation is wired through `Container.decision_outcome_repository()` and
+`Container.decision_outcome_service()`. The outcome service receives JSON outcome, Decision,
+acceptance, and action repositories. `Container.decision_lifecycle_service()` receives those same
+four repository categories so it can validate relations and derive the canonical state. Decision
+action, outcome, summary, and state CLI handlers resolve services and construct no repositories.
 
 ---
 

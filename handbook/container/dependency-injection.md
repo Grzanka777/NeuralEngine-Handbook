@@ -59,8 +59,12 @@ The acceptance foundation is wired through `Container.decision_acceptance_reposi
 `JsonDecisionAcceptanceRepository` and `JsonDecisionRepository` to
 `DecisionAcceptanceService`; acceptance CLI handlers construct no repositories.
 
-The action foundation is wired through `Container.decision_action_repository()`,
-`Container.decision_action_service()`, and `Container.decision_lifecycle_service()`. The action
-service receives JSON action, Decision, acceptance, and PlaybookRun repositories. The lifecycle
-service receives Decision, acceptance, and action repositories. CLI handlers resolve services and
-construct no repositories.
+The action foundation is wired through `Container.decision_action_repository()` and
+`Container.decision_action_service()`. The action service receives JSON action, Decision,
+acceptance, and PlaybookRun repositories.
+
+The outcome foundation is wired through `Container.decision_outcome_repository()` and
+`Container.decision_outcome_service()`. The outcome service receives JSON outcome, Decision,
+acceptance, and action repositories. `Container.decision_lifecycle_service()` receives those same
+four repository categories so it can validate relations and derive the canonical state. Decision
+action, outcome, summary, and state CLI handlers resolve services and construct no repositories.

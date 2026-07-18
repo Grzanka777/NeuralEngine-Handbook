@@ -40,6 +40,11 @@ Decision relation filtering, eligibility, and idempotency belong to
 Relation validation, Decision filtering, idempotency, and lifecycle projection belong to
 application services; no relation, idempotency, or lifecycle query method is part of the port.
 
+`DecisionOutcomeRepository` is limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision filtering, acceptance/action relation validation, multiple-outcome history, idempotency,
+summary derivation, and lifecycle projection belong to application services; no relation,
+idempotency, summary, latest-outcome, or lifecycle query method is part of the port.
+
 ## Repository return types
 
 Prefer:

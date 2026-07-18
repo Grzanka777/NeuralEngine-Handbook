@@ -5,10 +5,10 @@ Status: Accepted
 ## Decision
 
 Development decision tracking uses implemented separate immutable `Decision`,
-`DecisionAcceptance`, and `DecisionAction` records with embedded immutable `EvidenceReference`
-values. `DecisionOutcome` and `DecisionReview` remain separate future-only records. Lifecycle state
-is derived from semantic records, not stored as mutable status or duplicated in a generic event
-stream.
+`DecisionAcceptance`, `DecisionAction`, and `DecisionOutcome` records with embedded immutable
+`EvidenceReference` values. `DecisionReview` remains a separate future-only record. Lifecycle
+state is derived from semantic records, not stored as mutable status or duplicated in a generic
+event stream.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -22,11 +22,14 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `1964356` implements Decision proposal, acceptance, action recording, and their
-  CLI plus the canonical `DecisionLifecycleService`.
-- Only proposed, accepted, and in-progress states can currently be derived. Action completion time
-  does not imply lifecycle completion, success, failure, outcome, or review.
+- Source commit `5befd7c` implements Decision proposal, acceptance, action and outcome recording,
+  outcome history/summary, their CLI, and the canonical `DecisionLifecycleService`.
+- The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
+  and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
+  repository order. No generic completed, resolved, or reviewed state exists.
 - Acceptance is authorization for possible future execution; it is not execution or reversal and
   creates no later lifecycle or learning record.
-- The one recommended next milestone is `DecisionOutcome foundation`, kept separate from
-  DecisionReview.
+- Multiple immutable outcomes may be appended for one Decision. Outcome creation is factual only
+  and creates no review or learning record.
+- The one recommended next milestone is `DecisionReview foundation`, kept separate from automatic
+  learning and downstream Experience, Knowledge, or Playbook creation.

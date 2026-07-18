@@ -56,3 +56,13 @@ action under `NeuralPaths.DECISION_ACTIONS`; Brain initialization creates the di
 DecisionAction records round-trip through domain validation. `load_all()` sorts file names for
 deterministic order, and malformed data surfaces validation errors. The adapter performs no
 relation filtering, lifecycle projection, migration, ingestion, or command execution.
+
+## Decision outcome adapter
+
+`JsonDecisionOutcomeRepository` implements `DecisionOutcomeRepository` and stores one JSON file
+per outcome under `NeuralPaths.DECISION_OUTCOMES`; Brain initialization creates the directory.
+Complete DecisionOutcome records, including immutable scalar metrics, round-trip through domain
+validation. JSON object keys and metric keys are serialized deterministically, `load_all()` sorts
+file names, and malformed data surfaces validation errors. The adapter performs no relation
+validation or filtering, latest-outcome selection, summary or lifecycle projection, idempotency
+decision, migration, ingestion, review, or learning.

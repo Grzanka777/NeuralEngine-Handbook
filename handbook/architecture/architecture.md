@@ -68,14 +68,20 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `1964356` implements separate immutable `Decision`, `DecisionAcceptance`, and
-`DecisionAction` records, persistence-focused ports and JSON adapters, application services,
-container wiring, thin proposal/acceptance/action CLI commands, and the canonical
-`DecisionLifecycleService`. An action records work performed; it does not assert success or an
-outcome.
+Source commit `5befd7c` implements separate immutable `Decision`, `DecisionAcceptance`,
+`DecisionAction`, and `DecisionOutcome` records, persistence-focused ports and JSON adapters,
+application services, container wiring, thin proposal/acceptance/action/outcome CLI commands, and
+the canonical `DecisionLifecycleService`. An action records work performed; only a linked outcome
+records factual results and validation evidence.
 
-Only `proposed`, `accepted`, and `in_progress` can currently be derived. `DecisionOutcome` and
-`DecisionReview` remain future-only. There is no execution engine, completion/success/failure
-state, reversal, ingestion, automatic learning, generic full lifecycle replay, or Consigliere
+`DecisionOutcome` links one Decision, its acceptance, and one or more ordered unique actions. Its
+result is exactly `succeeded`, `failed`, `partial`, or `unknown`; scalar metrics are immutable.
+Multiple outcomes form history, and the non-persisted `DecisionOutcomeSummary` derives counts and
+the latest outcome using `(validated_at, outcome.id)` rather than repository order.
+
+The canonical lifecycle states are exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
+`failed`, `partial`, and `outcome_unknown`. `DecisionReview` and a reviewed state remain
+future-only. Outcome creation does not create learning. There is no execution engine, lifecycle
+reversal, ingestion, automatic learning or evolution, generic event replay, or Consigliere
 integration. The authoritative implemented contract and future boundary are defined in
-`handbook/architecture/decision-learning.md`.
+`handbook/architecture/decision-learning.md`; the next milestone is the DecisionReview foundation.

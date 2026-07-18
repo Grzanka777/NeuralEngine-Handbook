@@ -39,7 +39,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
     assert "# Decision Learning Architecture" in skill
-    assert "These commands exist at commit `1964356`" in skill
+    assert "These commands exist at commit `5befd7c`" in skill
     assert "neural decision add" in skill
     assert "neural decision list" in skill
     assert "neural decision show DECISION_UUID" in skill
@@ -48,11 +48,15 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "neural decision action add DECISION_UUID" in skill
     assert "neural decision action-history DECISION_UUID" in skill
     assert "neural decision action-show ACTION_UUID" in skill
+    assert "neural decision outcome add DECISION_UUID" in skill
+    assert "neural decision outcome-history DECISION_UUID" in skill
+    assert "neural decision outcome-show OUTCOME_UUID" in skill
+    assert "neural decision outcome-summary DECISION_UUID" in skill
     assert "neural decision state DECISION_UUID" in skill
     assert "DecisionOutcome foundation" in skill
-    assert "future-only records" in skill
+    assert "remains future-only" in skill
     assert "No Consigliere integration exists" in skill
-    assert "no automatic persistence, ingestion, or learning exists" in skill
+    assert "no automatic persistence, ingestion, or learning" in skill
     assert "same key + equivalent semantic payload" in skill
     assert '(decision_id, "decision_acceptance", idempotency_key)' in skill
     assert '(decision_id, "decision_action", idempotency_key)' in skill
@@ -78,6 +82,7 @@ def test_handbook_contains_all_domain_entities(tmp_path: Path) -> None:
         "PlaybookRevision",
         "PlaybookRevisionActivation",
         "PlaybookRevisionApplication",
+        "DecisionOutcome",
     ]
     for entity in entities:
         assert f"# {entity}" in handbook
@@ -109,12 +114,14 @@ def test_decision_engine_contains_agent_and_repository_rules(tmp_path: Path) -> 
     assert "ADR-0008" in decision_engine
 
 
-def test_handbook_contains_decision_action_lifecycle_and_future_boundaries(tmp_path: Path) -> None:
+def test_handbook_contains_decision_outcome_lifecycle_and_future_boundaries(
+    tmp_path: Path,
+) -> None:
     work_root = _copy_repo(tmp_path)
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `1964356` implements" in handbook
+    assert "NeuralEngine source commit `5befd7c` implements" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook
@@ -123,6 +130,10 @@ def test_handbook_contains_decision_action_lifecycle_and_future_boundaries(tmp_p
     assert "neural decision action add DECISION_UUID" in handbook
     assert "neural decision action-history DECISION_UUID" in handbook
     assert "neural decision action-show ACTION_UUID" in handbook
+    assert "neural decision outcome add DECISION_UUID" in handbook
+    assert "neural decision outcome-history DECISION_UUID" in handbook
+    assert "neural decision outcome-show OUTCOME_UUID" in handbook
+    assert "neural decision outcome-summary DECISION_UUID" in handbook
     assert "neural decision state DECISION_UUID" in handbook
     assert "DecisionAcceptance" in handbook
     assert "DecisionAcceptance foundation" in handbook
@@ -130,13 +141,12 @@ def test_handbook_contains_decision_action_lifecycle_and_future_boundaries(tmp_p
     assert "Decision without acceptance" in handbook
     assert "Decision with one valid acceptance" in handbook
     assert "DecisionReview" in handbook
-    assert "future-only records" in handbook
+    assert "remains future-only" in handbook
     assert '(project_key, "decision", idempotency_key)' in handbook
     assert "same key + different semantic payload" in handbook
     assert '(decision_id, "decision_acceptance", idempotency_key)' in handbook
     assert "different key + Decision already accepted" in handbook
     assert "There is no Evidence repository, service, or CLI" in handbook
-    assert "There is no executed, completed, succeeded, failed, or reviewed state" in handbook
     assert "DecisionAction" in handbook
     assert "## DecisionAction foundation" in handbook
     assert "DecisionLifecycleService` is the only canonical owner" in handbook
@@ -146,11 +156,21 @@ def test_handbook_contains_decision_action_lifecycle_and_future_boundaries(tmp_p
     assert "another action may be recorded" in handbook
     assert "PlaybookRun and Playbook currently expose no project_key" in handbook
     assert "DecisionOutcome" in handbook
-    assert "future-only records" in handbook
     assert "DecisionOutcome foundation" in handbook
+    assert "# DecisionOutcome" in handbook
+    assert "`succeeded`, `failed`, `partial`, and `unknown`" in handbook
+    assert '(decision_id, "decision_outcome", idempotency_key)' in handbook
+    assert "another outcome may be recorded" in handbook
+    assert "DecisionOutcomeSummary" in handbook
+    assert "(validated_at, outcome.id)" in handbook
+    assert "outcome_unknown" in handbook
+    assert "DecisionReview foundation" in handbook
     assert "No Consigliere integration exists" in handbook
-    assert "no automatic persistence, ingestion, or learning exists" in handbook
+    assert "no automatic persistence, ingestion, or learning" in handbook
     assert "ADR-0008" in handbook
+    assert "partially_successful" not in handbook
+    assert "inconclusive" not in handbook
+    assert "DecisionOutcome` and `DecisionReview` remain future-only" not in handbook
 
 
 def test_application_architecture_contains_core_boundaries(tmp_path: Path) -> None:
