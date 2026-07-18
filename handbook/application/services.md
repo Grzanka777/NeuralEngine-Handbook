@@ -166,3 +166,30 @@ The DecisionOutcome and DecisionReview duplicate-key rules are the same reusable
 application-service invariant: more than one persisted match for a scoped key is corruption or
 ambiguity to surface, never an ordering problem to resolve by choosing the first record. Their
 scopes and controlled ambiguity error types remain separate.
+
+## DecisionReview-to-Experience promotion ownership
+
+`ExperienceService.add_from_decision_review(...)` is the one implemented explicit promotion use
+case. It validates selectors and bounded promoter/reason/key metadata before relation reads, calls
+the existing validated `DecisionReviewService.show(review_id)` boundary, validates ordered finding
+and candidate-lesson indexes, copies exact Review text, validates optional Observation IDs,
+constructs one Experience, then loads Experiences for application-layer idempotency. Only a fully
+validated zero-match candidate is saved.
+
+The scope is `(decision_review_id, "review_experience_promotion", idempotency_key)`. Exactly one
+equivalent match returns the original Experience identity and timestamp without writing; exactly
+one different match raises `DecisionReviewPromotionIdempotencyConflictError`; more than one match
+raises `DecisionReviewPromotionIdempotencyAmbiguityError` without repository-order selection or
+arbitrary semantic comparison. Semantic equivalence excludes only generated Experience ID and
+timestamp and includes every caller-supplied Experience and ordered promotion field.
+
+Equivalent replay validates the existing provenance. `get_by_id()`, `list_experiences()`, and
+`list_for_observation()` also fail closed for promoted records when the Review graph is invalid, an
+index is out of range, or copied text differs. Plain Experience reads remain unaffected. Direct and
+Observation-derived `add` paths keep their existing inputs and do not acquire idempotency or
+promotion requirements.
+
+One Review may produce multiple Experiences under different keys, and the same statement may be
+promoted repeatedly. Each Experience references only one Review. Corrections append; no promotion
+replacement, ranking, deletion, lifecycle state, Knowledge creation, or Consigliere behavior is
+owned here.

@@ -11,6 +11,11 @@ authorized interpretation over an explicit ordered outcome set. Lifecycle state 
 acceptance, actions, and the latest factual outcome, not stored as mutable status or duplicated in
 a generic event stream. Review is orthogonal append-only history.
 
+Selected Review interpretation becomes Experience only through an explicit authorized use case.
+Promotion provenance is embedded immutably in the existing Experience rather than represented by
+a link aggregate, second write, new repository, or new lifecycle state. Experience-to-Knowledge
+remains a separate explicit decision.
+
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
 advisory layer rather than authoritative storage.
@@ -23,9 +28,12 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements Decision proposal,
+- Source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements Decision proposal,
   acceptance, action, outcome, and review recording; outcome history/summary; review history; their
   CLI; and the canonical `DecisionLifecycleService`.
+- The same checkpoint implements explicit ordered DecisionReview statement promotion into one
+  existing Experience with embedded immutable provenance, fail-closed read integrity, and scoped
+  application-layer idempotency. It does not implement automatic learning.
 - The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
   and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
   repository order. No generic completed, resolved, or reviewed state exists.
@@ -39,6 +47,10 @@ advisory layer rather than authoritative storage.
 - Outcome and review idempotency both fail closed when more than one persisted record matches a
   scoped key: their distinct ambiguity errors replace arbitrary first-match selection and no write
   occurs regardless of repository order or payload equivalence.
-- The recommended next controlled slice is separate explicit Experience creation from review
-  findings or candidate lessons; downstream Experience, Knowledge, or Playbook creation remains
-  explicit.
+- A Review may produce multiple Experiences under distinct keys, but one promoted Experience
+  references exactly one Review. Corrections append and ordinary Experience remains compatible.
+- Automatic promotion and a separate promotion/link aggregate were rejected because authority and
+  provenance belong in one explicit Experience write. Repository-order duplicate selection was
+  rejected in favor of a dedicated fail-closed ambiguity error.
+- The next controlled downstream step remains a separate explicit Experience-to-Knowledge decision
+  or use case; Knowledge, Playbook, and evolution creation remain explicit.

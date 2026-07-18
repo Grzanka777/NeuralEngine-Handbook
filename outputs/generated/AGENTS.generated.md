@@ -137,7 +137,7 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements separate immutable
+Source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements separate immutable
 `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
 records, persistence-focused ports and JSON adapters, application services, container wiring,
 thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
@@ -151,13 +151,21 @@ the latest outcome using `(validated_at, outcome.id)` rather than repository ord
 `DecisionReview` targets an explicit ordered non-empty set of outcomes for one Decision and
 acceptance. Multiple reviews form immutable history ordered by `(reviewed_at, review.id)`.
 
+The same checkpoint implements explicit Review-to-Experience promotion. One Experience may embed
+optional immutable `DecisionReviewPromotion` provenance containing ordered copied Review
+statements. `ExperienceService` uses the validated Review service boundary and existing Experience
+repository; no promotion aggregate, repository, adapter, path, Brain collection, or automatic
+learning exists. Old and ordinary Experiences remain compatible.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
-`reviewed` state. Outcome or review creation does not create learning. There is no execution
-engine, lifecycle reversal, ingestion, automatic learning or evolution, generic event replay, or
+`reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
+only the explicit promotion use case creates an Experience, which remains distinct from Knowledge.
+There is no execution engine, lifecycle reversal, ingestion, automatic learning or evolution,
+generic event replay, or
 Consigliere integration. The authoritative implemented contract and future boundary are defined
-in `handbook/architecture/decision-learning.md`; the recommended next controlled slice is
-separate explicit Experience creation from review findings or candidate lessons.
+in `handbook/architecture/decision-learning.md`; the next controlled downstream step remains a
+separate explicit Experience-to-Knowledge decision or use case.
 
 ## Agent policy
 

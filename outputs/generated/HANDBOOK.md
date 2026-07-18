@@ -103,7 +103,7 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements separate immutable
+Source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements separate immutable
 `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
 records, persistence-focused ports and JSON adapters, application services, container wiring,
 thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
@@ -117,13 +117,21 @@ the latest outcome using `(validated_at, outcome.id)` rather than repository ord
 `DecisionReview` targets an explicit ordered non-empty set of outcomes for one Decision and
 acceptance. Multiple reviews form immutable history ordered by `(reviewed_at, review.id)`.
 
+The same checkpoint implements explicit Review-to-Experience promotion. One Experience may embed
+optional immutable `DecisionReviewPromotion` provenance containing ordered copied Review
+statements. `ExperienceService` uses the validated Review service boundary and existing Experience
+repository; no promotion aggregate, repository, adapter, path, Brain collection, or automatic
+learning exists. Old and ordinary Experiences remain compatible.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
-`reviewed` state. Outcome or review creation does not create learning. There is no execution
-engine, lifecycle reversal, ingestion, automatic learning or evolution, generic event replay, or
+`reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
+only the explicit promotion use case creates an Experience, which remains distinct from Knowledge.
+There is no execution engine, lifecycle reversal, ingestion, automatic learning or evolution,
+generic event replay, or
 Consigliere integration. The authoritative implemented contract and future boundary are defined
-in `handbook/architecture/decision-learning.md`; the recommended next controlled slice is
-separate explicit Experience creation from review findings or candidate lessons.
+in `handbook/architecture/decision-learning.md`; the next controlled downstream step remains a
+separate explicit Experience-to-Knowledge decision or use case.
 
 ---
 
@@ -131,12 +139,13 @@ separate explicit Experience creation from review findings or candidate lessons.
 
 ## Status and purpose
 
-NeuralEngine source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements the Decision,
+NeuralEngine source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements the Decision,
 DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview foundations plus the
 canonical `DecisionLifecycleService` projection. They record an immutable proposed choice,
 explicit authorization, work performed under that authorization, factual results, and authorized
-interpretation. Each foundation persists immutable records, exposes application use cases, is
-wired through the container, and provides a thin CLI.
+interpretation, plus explicit promotion of selected Review statements into an existing Experience.
+Each foundation persists its durable records, exposes application use cases, is wired through the
+container, and provides a thin CLI.
 
 The wider Decision Learning lifecycle remains accepted future architecture. Decision tracking
 complements the existing Observation-to-Playbook chain; it does not replace it.
@@ -152,6 +161,8 @@ DecisionAcceptance
 DecisionAction
 DecisionOutcome
 DecisionReview
+DecisionReviewPromotion
+DecisionReviewPromotionSourceStatement
 DecisionRepository
 DecisionAcceptanceRepository
 DecisionActionRepository
@@ -168,6 +179,7 @@ DecisionActionService
 DecisionOutcomeService
 DecisionOutcomeSummary
 DecisionReviewService
+ExperienceService.add_from_decision_review
 DecisionLifecycleService
 container wiring
 neural decision add/list/show
@@ -183,6 +195,7 @@ neural decision outcome-summary
 neural decision review add
 neural decision review history
 neural decision review show
+neural experience from-review
 neural decision state
 ```
 
@@ -191,6 +204,8 @@ proposal for possible future work. Creating a DecisionAction records work perfor
 acceptance. Creating a DecisionOutcome records factual results and validation evidence for one or
 more linked actions. Creating a DecisionReview records authorized interpretation over an explicit
 ordered outcome set. None of these operations automatically creates learning.
+Only the separate authorized Review-to-Experience promotion use case creates one Experience from
+selected copied Review interpretation; that Experience remains distinct from Knowledge.
 
 ## Decision model
 
@@ -421,6 +436,37 @@ is transitive through `DecisionReview → DecisionOutcome[] → DecisionAction[]
 may cover one Decision, outcome, or ordered outcome set under different keys. Corrections append;
 there is no replacement, supersession, deletion, or persisted `current` behavior.
 
+## DecisionReview-to-Experience promotion foundation
+
+At source commit `12097fe`, `Experience` has optional immutable
+`decision_review_promotion: DecisionReviewPromotion | None`. Plain direct and
+Observation-derived Experiences retain `None`. Promotion contains exactly one Review ID, ordered
+non-empty immutable source statements, promoter, reason, and idempotency key. Each statement stores
+exactly `kind`, zero-based non-negative `index`, and exact copied `text`; kind is exactly `finding`
+or `candidate_lesson`, and `(kind, index)` pairs are unique.
+
+Promoter and key are bounded to 255 characters; reason and copied text are bounded to 1000. All are
+trimmed and non-blank. Reviewer and promoter are separate explicit authorities. Promotion copies no
+Decision, acceptance, action, outcome, reviewer, assessment, confidence, or evidence fields into
+Experience. One Experience references one Review and one or more selected statements; one Review
+and one source statement may produce multiple Experiences under different keys. Corrections append.
+
+The implemented chain is:
+
+```text
+Observation
+→ Decision
+→ DecisionAcceptance
+→ DecisionAction
+→ DecisionOutcome
+→ DecisionReview
+→ explicitly promoted Experience
+→ separately and explicitly created Knowledge
+```
+
+Review save does not promote. Promotion does not create Knowledge or change Decision lifecycle.
+`DecisionReview.assessment`, `DecisionOutcome.result`, and `Experience.result` remain distinct.
+
 ## Persistence
 
 The persistence-focused `DecisionRepository` port implements only:
@@ -496,6 +542,20 @@ It has no relation, idempotency, chronology, or lifecycle query methods.
 `NeuralPaths.DECISION_REVIEWS`, and Brain initialization creates that directory. `load_all()` sorts
 filenames and every record round-trips through domain validation. Filtering, relation validation,
 history ordering, ambiguity detection, and semantic comparison remain in the application service.
+
+The existing `ExperienceRepository` also remains limited to:
+
+```text
+save()
+load_all()
+get_by_id()
+```
+
+`JsonExperienceRepository` continues to store one JSON file per Experience under
+`NeuralPaths.EXPERIENCES` and round-trips the optional embedded promotion through domain
+validation. Old JSON without the field loads with `None`. No migration, new path, Brain directory,
+link record, promotion repository, second write, or production adapter rewrite was introduced.
+Idempotency and Review integrity remain application policy.
 
 ## Application service
 
@@ -761,6 +821,40 @@ for a scoped idempotency key must be surfaced, never resolved through `next()`, 
 selection, repository order, or comparison with an arbitrarily chosen record. Their scopes and
 ambiguity error types remain separate.
 
+### ExperienceService Review promotion
+
+`ExperienceService.add_from_decision_review(...)` validates selectors and bounded authority
+metadata before calling `DecisionReviewService.show()`. It then copies caller-ordered exact Review
+items, validates optional Observations, constructs one promoted Experience, loads all Experiences,
+and applies this scope:
+
+```text
+(decision_review_id, "review_experience_promotion", idempotency_key)
+```
+
+```text
+zero matches
+→ save and return one promoted Experience
+
+exactly one equivalent match
+→ validate its provenance and return original ID/timestamp, no write
+
+exactly one different match
+→ `DecisionReviewPromotionIdempotencyConflictError`, no write
+
+more than one match
+→ `DecisionReviewPromotionIdempotencyAmbiguityError`, no selection or comparison, no write
+```
+
+Equivalence excludes only generated `Experience.id` and `Experience.timestamp`; every ordinary
+Experience field, optional Observation ID, tag, and ordered promotion value remains semantic.
+Ambiguity is repository-order independent.
+
+Replay, `get_by_id()`, complete list, and Observation-linked list revalidate the referenced Review
+graph, selector bounds, and exact copied text. Missing or malformed provenance fails closed without
+repair or skipping; plain records bypass promotion validation. The use case owns no Knowledge,
+Playbook, evolution, lifecycle, evidence, or Consigliere behavior.
+
 ### Canonical DecisionLifecycleService
 
 `DecisionLifecycleService` is the only canonical owner of the current lifecycle projection. It
@@ -821,6 +915,8 @@ JsonDecisionOutcomeRepository
 DecisionOutcomeService
 JsonDecisionReviewRepository
 DecisionReviewService
+JsonExperienceRepository
+ExperienceService
 DecisionLifecycleService
 ```
 
@@ -836,10 +932,13 @@ receives `JsonDecisionOutcomeRepository` plus Decision, acceptance, and action r
 outcome repositories. `Container.decision_review_repository()` and
 `Container.decision_review_service()` expose the review composition. CLI handlers resolve services
 from the container and construct no repositories.
+`Container.experience_service()` injects `JsonExperienceRepository`,
+`JsonObservationRepository`, and that validated `DecisionReviewService` boundary into
+`ExperienceService`; the container owns no promotion policy.
 
 ## Implemented CLI
 
-These commands exist at commit `910f481e`:
+These commands exist at commit `12097fe`:
 
 ```text
 neural decision add
@@ -857,6 +956,13 @@ neural decision outcome-summary DECISION_UUID
 neural decision review add DECISION_UUID
 neural decision review history DECISION_UUID
 neural decision review show REVIEW_UUID
+neural experience add
+neural experience from-observation OBSERVATION_UUID
+neural experience from-review REVIEW_UUID
+neural experience list
+neural experience show EXPERIENCE_UUID
+neural experience knowledge EXPERIENCE_UUID
+neural observation experiences OBSERVATION_UUID
 neural decision state DECISION_UUID
 ```
 
@@ -1065,6 +1171,37 @@ and every review field.
 existing Decision with no reviews renders `No review history found for Decision: ...`.
 `neural decision review show REVIEW_UUID` renders every field after persisted relation validation.
 
+### Review-to-Experience promotion command
+
+`neural experience from-review REVIEW_UUID` requires repeatable ordered `--source`, plus:
+
+```text
+--promoted-by
+--promotion-reason
+--idempotency-key
+--title
+--context
+--action
+--outcome
+--result
+```
+
+Optional repeatable inputs are `--observation-id` and `--tag`. Selectors use exact syntax such as
+`--source finding:1 --source candidate_lesson:2`. CLI ordinals are positive and one-based; they
+become durable zero-based indexes `0` and `1` without caller-supplied text. Invalid selector syntax,
+kind, ordinal, Review, source index, Observation, conflict, ambiguity, or read integrity renders a
+controlled error.
+
+Success and equivalent replay print the stored Experience ID and complete auditable Experience
+details. Promotion source rendering shows kind, user ordinal, stored index, and copied text, plus
+promoter, reason, and key. Reviewer and promoter remain separate authorities.
+
+Ordinary Experience commands keep their existing contracts. Direct `add` requires title, context,
+action, outcome, and result; `from-observation` derives context from the required Observation and
+requires title, action, outcome, and result. Observation IDs and tags remain optional where already
+supported. List, show, Experience-to-Knowledge navigation, and Observation-to-Experience navigation
+remain read-only. Ordinary Experience creation requires no promotion metadata or idempotency key.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
@@ -1095,10 +1232,12 @@ Decision
 - `DecisionOutcome` is the implemented factual result and validation evidence record.
 - `DecisionReview` is the implemented authorized interpretation over explicit ordered outcomes.
 
-All five records exist. Records remain immutable semantic records rather than fields on a mutable
+All five decision records and the explicit Review-to-Experience promotion use case exist. Records
+remain immutable semantic records rather than fields on a mutable
 Decision or a duplicate generic event stream. A proposed option is not an acceptance, acceptance
 is not execution, an outcome is not a review or Experience, and review findings or candidate
-lessons are not automatically Experience, Knowledge, or a Playbook change.
+lessons are not Experience until promotion succeeds and are never automatically Knowledge or a
+Playbook change.
 
 The currently derivable projection is only:
 
@@ -1141,13 +1280,14 @@ Observation
 → DecisionAction
 → DecisionOutcome
 → DecisionReview
-→ explicitly created Experience
-→ explicitly created Knowledge
+→ explicitly promoted Experience
+→ separately and explicitly created Knowledge
 ```
 
 DecisionAction may optionally reference an existing PlaybookRun, with existence-only validation
 because PlaybookRun and Playbook expose no project key. `DecisionOutcome` remains distinct from
-Experience, and Decision review must never mutate a Playbook. Any connection from an action to
+Experience. The promotion use case copies selected Review text into optional immutable Experience
+provenance and never mutates a Playbook. Any connection from an action to
 PlaybookEvaluation, EvolutionProposal, or the revision lifecycle requires a separate reviewed use
 case.
 
@@ -1167,7 +1307,7 @@ prompt
 → post-work lesson
 ```
 
-Commit `910f481e` does not capture or ingest those events automatically. Automatic candidates and
+Commit `12097fe` does not capture or ingest those events automatically. Automatic candidates and
 manual confirmation remain future concepts; no automatic persistence, ingestion, or learning
 exists.
 
@@ -1176,7 +1316,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `910f481e` does not implement:
+Commit `12097fe` does not implement:
 
 ```text
 execution engine
@@ -1193,6 +1333,7 @@ git ingestion
 automatic Observation creation
 automatic Experience creation
 automatic Knowledge creation
+Experience-to-Knowledge promotion
 automatic Playbook creation or mutation
 automatic evolution
 Consigliere integration
@@ -1201,18 +1342,18 @@ Consigliere integration
 It also does not execute commands referenced by evidence, open locators, automatically accept
 Decisions, materialize Playbook revisions, or infer outcomes from `completed_at`. Explicit user
 requests are required to create Decision, DecisionAcceptance, DecisionAction, DecisionOutcome, or
-DecisionReview records.
+DecisionReview records and to promote Review statements into Experience.
 
 ## Recommended next milestone
 
 The recommended next controlled slice is:
 
 ```text
-separate explicit Experience creation from DecisionReview findings or candidate lessons
+separate explicit Experience-to-Knowledge decision or use case
 ```
 
 It must preserve explicit authority and remain separate from automatic Knowledge, Playbook,
-PlaybookEvaluation, EvolutionProposal, or Consigliere creation.
+PlaybookEvaluation, EvolutionProposal, lifecycle, or Consigliere behavior.
 
 ## Handbook synchronization policy
 
@@ -1290,18 +1431,19 @@ Observation
 → DecisionAction
 → DecisionOutcome
 → DecisionReview
-→ explicitly created Experience
-→ explicitly created Knowledge
+→ explicitly promoted Experience
+→ separately and explicitly created Knowledge
 ```
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
 DecisionOutcome is factual; DecisionReview is authorized interpretation; Experience captures
-separately created operational learning; Knowledge is generalized; Playbook remains a separately
-created repeatable procedure. A Decision may have multiple immutable outcomes and multiple reviews,
-including reviews over the same ordered outcome set when their idempotency keys differ. Review
-action provenance is transitive through its explicit outcomes; it does not persist action IDs.
-These records and their embedded EvidenceReference values exist at source commit `910f481e`; no
-Review-driven lifecycle transition or later learning record in this path is automatic.
+explicitly promoted operational learning; Knowledge is separately generalized; Playbook remains a
+separately created repeatable procedure. A Decision may have multiple immutable outcomes and
+reviews, and one Review may explicitly produce multiple Experiences under different promotion
+keys. A promoted Experience selects ordered Review statements and cannot combine Reviews. Review
+action provenance remains transitive through explicit outcomes; promoted Experience provenance
+remains transitive through its one Review. These records exist at source commit `12097fe`; no
+Review save, promotion, lifecycle transition, or later Knowledge record in this path is automatic.
 
 ---
 
@@ -1349,13 +1491,15 @@ The transition must be performed by an application use case, not a repository ad
 
 ## Responsibility
 
-An Experience represents interpreted learning derived from one or more observations.
+An Experience represents explicitly recorded operational learning. It may be created directly,
+derived from one Observation, or explicitly promoted from selected DecisionReview statements.
 
 ## Owns
 
 - interpreted outcome,
 - contextual meaning,
 - provenance back to observations,
+- optional immutable DecisionReview promotion provenance,
 - identity.
 
 ## Must not own
@@ -1369,12 +1513,16 @@ An Experience represents interpreted learning derived from one or more observati
 - Provenance is preserved.
 - Interpretation is explicit.
 - Creation does not erase source observations.
+- Plain and Observation-derived Experiences have `decision_review_promotion is None`.
+- A promoted Experience contains one optional `DecisionReviewPromotion`; it remains Experience,
+  not generalized Knowledge.
 
 ## Typical transitions
 
 `Experience` → `Knowledge`
 
-The application layer coordinates this transformation.
+The application layer coordinates this separate explicit transformation. Experience creation does
+not create Knowledge automatically.
 
 ---
 
@@ -1806,7 +1954,7 @@ and a failed outcome can support a sound review.
 - Findings are required, ordered, trimmed, non-blank, case-insensitively unique, and limited to 100
   entries of at most 1000 characters each.
 - Candidate lessons use the same ordering, normalization, uniqueness, count, and length bounds, but
-  may be empty. They carry no authority to create or promote Experience or Knowledge.
+  may be empty. They are not Experience or Knowledge until a separate authorized use case succeeds.
 - Tags are trimmed and case-insensitively deduplicated while first-seen order is preserved.
 - `recorded_at` and `reviewed_at` must be timezone-aware and are normalized to UTC. Locally,
   `reviewed_at` cannot be later than `recorded_at`; the service also requires it not to precede the
@@ -1863,12 +2011,161 @@ renders every field. Evidence locators are retained but not opened.
 
 ## Lifecycle and learning boundary
 
-DecisionReview is orthogonal interpretive history. It does not affect `DecisionLifecycleService`.
+DecisionReview is orthogonal interpretive history. Saving one never creates Experience. The
+separate `ExperienceService.add_from_decision_review()` use case may explicitly copy selected
+findings or candidate lessons into one Experience without mutating the Review.
+DecisionReview does not affect `DecisionLifecycleService`.
 The lifecycle remains exactly `proposed`, `accepted`, `in_progress`, `succeeded`, `failed`,
 `partial`, and `outcome_unknown`; no `reviewed` state exists. A review never automatically creates
-Observation, Experience, Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, revision
-records, or Consigliere work. The next controlled slice is separate explicit Experience creation
-from review findings or candidate lessons.
+Observation, Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, revision records, or
+Consigliere work. Promotion remains explicit and a promoted Experience is not Knowledge.
+
+---
+
+# DecisionReview-to-Experience Promotion
+
+## Responsibility and chain
+
+The implemented promotion foundation converts selected immutable DecisionReview interpretation
+into one existing `Experience` record only through the explicitly authorized
+`ExperienceService.add_from_decision_review(...)` use case:
+
+```text
+DecisionReview
+→ explicitly promoted Experience
+→ separately and explicitly created Knowledge
+```
+
+A finding or candidate lesson is not Experience before promotion succeeds. A promoted Experience
+is still not Knowledge. Reviewer and promoter are separate authorities and may be different people;
+this foundation introduces no RBAC or approval system.
+
+## Durable schema
+
+`Experience` now has one optional field:
+
+```text
+decision_review_promotion: DecisionReviewPromotion | None
+```
+
+`DecisionReviewPromotion` contains exactly:
+
+```text
+decision_review_id
+source_statements
+promoted_by
+promotion_reason
+idempotency_key
+```
+
+Each ordered `DecisionReviewPromotionSourceStatement` contains exactly:
+
+```text
+kind
+index
+text
+```
+
+The source-kind vocabulary is exactly `finding | candidate_lesson`. Durable indexes are zero-based
+and non-negative. Source statements are ordered and non-empty, and each `(kind, index)` pair is
+unique. Promotion and source-statement values are immutable.
+
+`promoted_by` and `idempotency_key` are trimmed, non-blank, and at most 255 characters;
+`promotion_reason` is trimmed, non-blank, and at most 1000 characters. Copied statement text is
+trimmed, non-blank, and at most 1000 characters. The service stores the normalized exact immutable
+Review item at the selected index; callers and the CLI never supply independent source text.
+
+Plain direct and Observation-derived Experiences retain `decision_review_promotion is None`. A
+promotion copies no Decision, DecisionAcceptance, DecisionAction, DecisionOutcome, reviewer,
+assessment, confidence, or evidence fields into Experience. Their provenance remains transitive
+through the referenced Review.
+
+## Cardinality and corrections
+
+- One promoted Experience references exactly one DecisionReview.
+- One promoted Experience selects one or more ordered statements from that Review.
+- One DecisionReview may produce multiple Experiences.
+- One source statement may be promoted repeatedly under different idempotency keys.
+- One promoted Experience cannot combine multiple DecisionReviews.
+
+Corrections append another Experience under a different key. There is no replacement,
+supersession, deletion, status, ranking, scoring, or current/best promotion behavior.
+
+## Explicit application and read integrity
+
+`ExperienceService.add_from_decision_review(...)` performs this sequence:
+
+1. validate the non-empty, unique, non-negative caller selectors and normalize bounded promotion
+   authority metadata;
+2. call the existing validated `DecisionReviewService.show(review_id)` boundary;
+3. validate each ordered finding or candidate-lesson index and copy exact Review text;
+4. validate optional Observation references through the existing behavior;
+5. construct one promoted Experience;
+6. scan `ExperienceRepository.load_all()` for the scoped idempotency key;
+7. save exactly one Experience only after every validation and idempotency check.
+
+Validation failure, conflict, or ambiguity performs no write. The service creates no second link
+record and performs no transaction emulation.
+
+Equivalent replay validates the existing promoted Experience before returning it. `get_by_id()`,
+the complete Experience list, and the Observation-linked Experience list also revalidate promoted
+records. Validation calls the referenced Review's existing `show()` boundary, which revalidates its
+persisted Decision, acceptance, outcome, and time relations, then checks selector bounds and exact
+copied text. Missing or malformed provenance fails closed without repair or skipping. Plain
+Experience reads are unaffected; Observation-linked listing validates only returned linked records.
+
+## Idempotency
+
+Promotion idempotency is application-layer policy scoped by:
+
+```text
+(decision_review_id, "review_experience_promotion", idempotency_key)
+```
+
+| Matches | Implemented behavior |
+| ---: | --- |
+| 0 | Save and return one promoted Experience. |
+| 1 equivalent | Return the existing Experience with its original ID and timestamp; no write. |
+| 1 conflicting | Raise `DecisionReviewPromotionIdempotencyConflictError`; no write. |
+| More than 1 | Raise `DecisionReviewPromotionIdempotencyAmbiguityError`; do not select or compare an arbitrary duplicate; no write. |
+
+Ambiguity is independent of repository enumeration order. Semantic equivalence excludes only
+generated `Experience.id` and `Experience.timestamp`. It includes every caller-supplied Experience
+field, optional Observation IDs, tags, and every ordered promotion field, including copied text,
+promoter, reason, and key.
+
+## Persistence compatibility
+
+`ExperienceRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`; scanning and
+relation policy remain in the application layer. Existing `JsonExperienceRepository` already
+round-trips plain and promoted records through domain validation under `NeuralPaths.EXPERIENCES`.
+Old JSON without `decision_review_promotion` remains valid and loads with `None`.
+
+No migration, inferred provenance, second write, separate aggregate, repository, adapter, path, or
+Brain collection was introduced. The production adapter required no rewrite.
+
+## CLI and boundaries
+
+The implemented command is `neural experience from-review REVIEW_UUID`. It requires repeatable
+ordered `--source KIND:ORDINAL`, `--promoted-by`, `--promotion-reason`, `--idempotency-key`,
+`--title`, `--context`, `--action`, `--outcome`, and `--result`. Optional repeatable inputs are
+`--observation-id` and `--tag`.
+
+For example, `--source finding:1 --source candidate_lesson:2` uses one-based user ordinals and is
+converted deterministically to durable indexes `0` and `1`. Invalid syntax, kind, non-positive
+ordinal, Review, source index, Observation, conflict, ambiguity, or persisted integrity renders a
+controlled error. Success and equivalent replay render the stored Experience identity and complete
+promotion provenance, including user ordinal, stored index, copied text, actor, reason, and key.
+
+Ordinary `neural experience add`, `from-observation`, `list`, `show`, `knowledge`, and
+`neural observation experiences` retain their existing inputs and behavior. Ordinary creation does
+not require promotion data or an idempotency key.
+
+Promotion changes no canonical Decision lifecycle state and adds no `reviewed`, `promoted`, or
+`learned` state. It creates no Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal,
+revision, evidence execution, automatic learning, or Consigliere work. `DecisionReview.assessment`,
+`DecisionOutcome.result`, and `Experience.result` remain distinct meanings. The next controlled
+downstream step remains a separate explicit Experience-to-Knowledge decision or use case.
 
 ---
 
@@ -2041,6 +2338,33 @@ application-service invariant: more than one persisted match for a scoped key is
 ambiguity to surface, never an ordering problem to resolve by choosing the first record. Their
 scopes and controlled ambiguity error types remain separate.
 
+## DecisionReview-to-Experience promotion ownership
+
+`ExperienceService.add_from_decision_review(...)` is the one implemented explicit promotion use
+case. It validates selectors and bounded promoter/reason/key metadata before relation reads, calls
+the existing validated `DecisionReviewService.show(review_id)` boundary, validates ordered finding
+and candidate-lesson indexes, copies exact Review text, validates optional Observation IDs,
+constructs one Experience, then loads Experiences for application-layer idempotency. Only a fully
+validated zero-match candidate is saved.
+
+The scope is `(decision_review_id, "review_experience_promotion", idempotency_key)`. Exactly one
+equivalent match returns the original Experience identity and timestamp without writing; exactly
+one different match raises `DecisionReviewPromotionIdempotencyConflictError`; more than one match
+raises `DecisionReviewPromotionIdempotencyAmbiguityError` without repository-order selection or
+arbitrary semantic comparison. Semantic equivalence excludes only generated Experience ID and
+timestamp and includes every caller-supplied Experience and ordered promotion field.
+
+Equivalent replay validates the existing provenance. `get_by_id()`, `list_experiences()`, and
+`list_for_observation()` also fail closed for promoted records when the Review graph is invalid, an
+index is out of range, or copied text differs. Plain Experience reads remain unaffected. Direct and
+Observation-derived `add` paths keep their existing inputs and do not acquire idempotency or
+promotion requirements.
+
+One Review may produce multiple Experiences under different keys, and the same statement may be
+promoted repeatedly. Each Experience references only one Review. Corrections append; no promotion
+replacement, ranking, deletion, lifecycle state, Knowledge creation, or Consigliere behavior is
+owned here.
+
 ---
 
 # Application Errors
@@ -2169,6 +2493,11 @@ idempotency, summary, latest-outcome, or lifecycle query method is part of the p
 Decision filtering, cross-record validation, history ordering, and scoped idempotency—including
 fail-closed duplicate-match ambiguity—belong to `DecisionReviewService`; no relation,
 idempotency, chronology, or lifecycle query method is part of the port.
+
+`ExperienceRepository` remains limited to `save()`, `load_all()`, and `get_by_id()` for both plain
+and promoted Experiences. Review validation, copied-text integrity, Observation validation, and
+`(decision_review_id, "review_experience_promotion", idempotency_key)` scanning belong to
+`ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
 
 ## Repository return types
 
@@ -2315,6 +2644,17 @@ DecisionReview records round-trip through domain validation. JSON object keys ar
 validation errors. The adapter performs no Decision filtering, relation validation, chronology,
 idempotency selection, lifecycle projection, evidence ingestion, learning, or Consigliere work.
 
+## Experience adapter and promotion compatibility
+
+`JsonExperienceRepository` continues to implement the unchanged `ExperienceRepository` under
+`NeuralPaths.EXPERIENCES`, storing one JSON file per Experience and sorting filenames for
+deterministic `load_all()`. Domain validation round-trips both ordinary records and the optional
+embedded `DecisionReviewPromotion`. Old JSON without that field loads with `None` and remains plain.
+
+No migration or production adapter rewrite was required. The adapter performs no Review lookup,
+source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
+provenance. No promotion adapter, repository, path, or Brain directory exists.
+
 ---
 
 # Dependency Injection and Container
@@ -2393,6 +2733,12 @@ The review foundation is wired through `Container.decision_review_repository()` 
 `JsonDecisionRepository`, `JsonDecisionAcceptanceRepository`, and
 `JsonDecisionOutcomeRepository`. Brain initialization creates `NeuralPaths.DECISION_REVIEWS`.
 Decision review CLI handlers resolve the service and construct no repositories.
+
+`Container.experience_service()` supplies `JsonExperienceRepository`,
+`JsonObservationRepository`, and the existing validated `DecisionReviewService` boundary to
+`ExperienceService`. The container adds no promotion policy, link repository, path, or lifecycle
+behavior; `neural experience from-review` resolves this service like the ordinary Experience
+commands.
 
 ---
 
@@ -2990,6 +3336,11 @@ authorized interpretation over an explicit ordered outcome set. Lifecycle state 
 acceptance, actions, and the latest factual outcome, not stored as mutable status or duplicated in
 a generic event stream. Review is orthogonal append-only history.
 
+Selected Review interpretation becomes Experience only through an explicit authorized use case.
+Promotion provenance is embedded immutably in the existing Experience rather than represented by
+a link aggregate, second write, new repository, or new lifecycle state. Experience-to-Knowledge
+remains a separate explicit decision.
+
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
 advisory layer rather than authoritative storage.
@@ -3002,9 +3353,12 @@ advisory layer rather than authoritative storage.
   idempotency checks; repository ports remain persistence-focused.
 - No automatic ingestion, persistence, learning, Playbook evolution, or Consigliere integration is
   implied.
-- Source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements Decision proposal,
+- Source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements Decision proposal,
   acceptance, action, outcome, and review recording; outcome history/summary; review history; their
   CLI; and the canonical `DecisionLifecycleService`.
+- The same checkpoint implements explicit ordered DecisionReview statement promotion into one
+  existing Experience with embedded immutable provenance, fail-closed read integrity, and scoped
+  application-layer idempotency. It does not implement automatic learning.
 - The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
   and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
   repository order. No generic completed, resolved, or reviewed state exists.
@@ -3018,6 +3372,10 @@ advisory layer rather than authoritative storage.
 - Outcome and review idempotency both fail closed when more than one persisted record matches a
   scoped key: their distinct ambiguity errors replace arbitrary first-match selection and no write
   occurs regardless of repository order or payload equivalence.
-- The recommended next controlled slice is separate explicit Experience creation from review
-  findings or candidate lessons; downstream Experience, Knowledge, or Playbook creation remains
-  explicit.
+- A Review may produce multiple Experiences under distinct keys, but one promoted Experience
+  references exactly one Review. Corrections append and ordinary Experience remains compatible.
+- Automatic promotion and a separate promotion/link aggregate were rejected because authority and
+  provenance belong in one explicit Experience write. Repository-order duplicate selection was
+  rejected in favor of a dedicated fail-closed ambiguity error.
+- The next controlled downstream step remains a separate explicit Experience-to-Knowledge decision
+  or use case; Knowledge, Playbook, and evolution creation remain explicit.

@@ -75,3 +75,14 @@ DecisionReview records round-trip through domain validation. JSON object keys ar
 `indent=2` and `sort_keys=True`, `load_all()` sorts filenames, and malformed data surfaces
 validation errors. The adapter performs no Decision filtering, relation validation, chronology,
 idempotency selection, lifecycle projection, evidence ingestion, learning, or Consigliere work.
+
+## Experience adapter and promotion compatibility
+
+`JsonExperienceRepository` continues to implement the unchanged `ExperienceRepository` under
+`NeuralPaths.EXPERIENCES`, storing one JSON file per Experience and sorting filenames for
+deterministic `load_all()`. Domain validation round-trips both ordinary records and the optional
+embedded `DecisionReviewPromotion`. Old JSON without that field loads with `None` and remains plain.
+
+No migration or production adapter rewrite was required. The adapter performs no Review lookup,
+source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
+provenance. No promotion adapter, repository, path, or Brain directory exists.

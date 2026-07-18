@@ -50,15 +50,16 @@ Observation
 → DecisionAction
 → DecisionOutcome
 → DecisionReview
-→ explicitly created Experience
-→ explicitly created Knowledge
+→ explicitly promoted Experience
+→ separately and explicitly created Knowledge
 ```
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
 DecisionOutcome is factual; DecisionReview is authorized interpretation; Experience captures
-separately created operational learning; Knowledge is generalized; Playbook remains a separately
-created repeatable procedure. A Decision may have multiple immutable outcomes and multiple reviews,
-including reviews over the same ordered outcome set when their idempotency keys differ. Review
-action provenance is transitive through its explicit outcomes; it does not persist action IDs.
-These records and their embedded EvidenceReference values exist at source commit `910f481e`; no
-Review-driven lifecycle transition or later learning record in this path is automatic.
+explicitly promoted operational learning; Knowledge is separately generalized; Playbook remains a
+separately created repeatable procedure. A Decision may have multiple immutable outcomes and
+reviews, and one Review may explicitly produce multiple Experiences under different promotion
+keys. A promoted Experience selects ordered Review statements and cannot combine Reviews. Review
+action provenance remains transitive through explicit outcomes; promoted Experience provenance
+remains transitive through its one Review. These records exist at source commit `12097fe`; no
+Review save, promotion, lifecycle transition, or later Knowledge record in this path is automatic.

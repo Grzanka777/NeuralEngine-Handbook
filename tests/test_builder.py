@@ -39,7 +39,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
     assert "# Decision Learning Architecture" in skill
-    assert "These commands exist at commit `910f481e`" in skill
+    assert "These commands exist at commit `12097fe`" in skill
     assert "neural decision add" in skill
     assert "neural decision list" in skill
     assert "neural decision show DECISION_UUID" in skill
@@ -55,6 +55,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "neural decision review add DECISION_UUID" in skill
     assert "neural decision review history DECISION_UUID" in skill
     assert "neural decision review show REVIEW_UUID" in skill
+    assert "neural experience from-review REVIEW_UUID" in skill
     assert "neural decision state DECISION_UUID" in skill
     assert "DecisionOutcome foundation" in skill
     assert "DecisionReview` remains future-only" not in skill
@@ -65,6 +66,17 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "`high`" in skill
     assert "DecisionReviewIdempotencyAmbiguityError" in skill
     assert "DecisionOutcomeIdempotencyAmbiguityError" in skill
+    assert "DecisionReviewPromotionSourceStatement" in skill
+    assert "kind is exactly `finding`" in skill
+    assert "`candidate_lesson`" in skill
+    assert '(decision_review_id, "review_experience_promotion", idempotency_key)' in skill
+    assert "DecisionReviewPromotionIdempotencyConflictError" in skill
+    assert "DecisionReviewPromotionIdempotencyAmbiguityError" in skill
+    assert "CLI ordinals are positive and one-based" in skill
+    assert "durable zero-based indexes" in skill
+    assert "Old JSON without the field loads with `None`" in skill
+    assert "fails closed without" in skill
+    assert "separate explicit Experience-to-Knowledge" in skill
     assert "No Consigliere integration exists" in skill
     assert "no automatic persistence, ingestion, or learning" in skill
     assert "same key + equivalent semantic payload" in skill
@@ -97,6 +109,11 @@ def test_handbook_contains_all_domain_entities(tmp_path: Path) -> None:
     ]
     for entity in entities:
         assert f"# {entity}" in handbook
+    assert "# DecisionReview-to-Experience Promotion" in handbook
+    # Prove generated section order: DecisionReview precedes DecisionReview-to-Experience Promotion
+    assert handbook.index("# DecisionReview\n") < handbook.index(
+        "# DecisionReview-to-Experience Promotion\n"
+    )
 
 
 def test_handbook_preserves_revision_application_boundaries(tmp_path: Path) -> None:
@@ -125,14 +142,14 @@ def test_decision_engine_contains_agent_and_repository_rules(tmp_path: Path) -> 
     assert "ADR-0008" in decision_engine
 
 
-def test_handbook_contains_decision_review_lifecycle_and_learning_boundaries(
+def test_handbook_contains_decision_review_experience_promotion_boundaries(
     tmp_path: Path,
 ) -> None:
     work_root = _copy_repo(tmp_path)
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f`" in handbook
+    assert "NeuralEngine source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e`" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook
@@ -148,6 +165,7 @@ def test_handbook_contains_decision_review_lifecycle_and_learning_boundaries(
     assert "neural decision review add DECISION_UUID" in handbook
     assert "neural decision review history DECISION_UUID" in handbook
     assert "neural decision review show REVIEW_UUID" in handbook
+    assert "neural experience from-review REVIEW_UUID" in handbook
     assert "neural decision state DECISION_UUID" in handbook
     assert "DecisionAcceptance" in handbook
     assert "DecisionAcceptance foundation" in handbook
@@ -190,7 +208,20 @@ def test_handbook_contains_decision_review_lifecycle_and_learning_boundaries(
     assert "Action IDs are not persisted" in handbook
     assert "(reviewed_at, review.id)" in handbook
     assert "no `reviewed` state" in handbook
-    assert "explicit Experience creation" in handbook
+    assert "explicitly promoted Experience" in handbook
+    assert "decision_review_promotion: DecisionReviewPromotion | None" in handbook
+    assert "DecisionReviewPromotionSourceStatement" in handbook
+    assert "finding | candidate_lesson" in handbook
+    assert "CLI ordinals are positive and one-based" in handbook
+    assert "durable zero-based indexes" in handbook
+    assert '(decision_review_id, "review_experience_promotion", idempotency_key)' in handbook
+    assert "DecisionReviewPromotionIdempotencyConflictError" in handbook
+    assert "DecisionReviewPromotionIdempotencyAmbiguityError" in handbook
+    assert "Old JSON without `decision_review_promotion` remains valid" in handbook
+    assert "Missing or malformed provenance fails closed" in handbook
+    assert "a promoted Experience is not Knowledge" in handbook
+    assert "separate explicit Experience-to-Knowledge" in handbook
+    assert "separate explicit Experience creation from DecisionReview" not in handbook
     assert "No Consigliere integration exists" in handbook
     assert "no automatic persistence, ingestion, or learning" in handbook
     assert "ADR-0008" in handbook
@@ -217,6 +248,12 @@ def test_application_architecture_contains_core_boundaries(tmp_path: Path) -> No
     assert "Container.decision_review_service()" in application
     assert "DecisionReviewIdempotencyAmbiguityError" in application
     assert "DecisionOutcomeIdempotencyAmbiguityError" in application
+    assert "ExperienceService.add_from_decision_review(...)" in application
+    assert "DecisionReviewPromotionIdempotencyConflictError" in application
+    assert "DecisionReviewPromotionIdempotencyAmbiguityError" in application
+    assert "ExperienceRepository` remains limited" in application
+    assert "Old JSON without that field loads with `None`" in application
+    assert "Container.experience_service()" in application
 
 
 def test_application_architecture_includes_accepted_adrs(tmp_path: Path) -> None:

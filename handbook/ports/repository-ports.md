@@ -50,6 +50,11 @@ Decision filtering, cross-record validation, history ordering, and scoped idempo
 fail-closed duplicate-match ambiguity—belong to `DecisionReviewService`; no relation,
 idempotency, chronology, or lifecycle query method is part of the port.
 
+`ExperienceRepository` remains limited to `save()`, `load_all()`, and `get_by_id()` for both plain
+and promoted Experiences. Review validation, copied-text integrity, Observation validation, and
+`(decision_review_id, "review_experience_promotion", idempotency_key)` scanning belong to
+`ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
+
 ## Repository return types
 
 Prefer:

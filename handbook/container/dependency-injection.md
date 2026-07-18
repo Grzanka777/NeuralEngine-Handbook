@@ -74,3 +74,9 @@ The review foundation is wired through `Container.decision_review_repository()` 
 `JsonDecisionRepository`, `JsonDecisionAcceptanceRepository`, and
 `JsonDecisionOutcomeRepository`. Brain initialization creates `NeuralPaths.DECISION_REVIEWS`.
 Decision review CLI handlers resolve the service and construct no repositories.
+
+`Container.experience_service()` supplies `JsonExperienceRepository`,
+`JsonObservationRepository`, and the existing validated `DecisionReviewService` boundary to
+`ExperienceService`. The container adds no promotion policy, link repository, path, or lifecycle
+behavior; `neural experience from-review` resolves this service like the ordinary Experience
+commands.

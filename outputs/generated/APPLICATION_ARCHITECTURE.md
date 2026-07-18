@@ -169,6 +169,33 @@ application-service invariant: more than one persisted match for a scoped key is
 ambiguity to surface, never an ordering problem to resolve by choosing the first record. Their
 scopes and controlled ambiguity error types remain separate.
 
+## DecisionReview-to-Experience promotion ownership
+
+`ExperienceService.add_from_decision_review(...)` is the one implemented explicit promotion use
+case. It validates selectors and bounded promoter/reason/key metadata before relation reads, calls
+the existing validated `DecisionReviewService.show(review_id)` boundary, validates ordered finding
+and candidate-lesson indexes, copies exact Review text, validates optional Observation IDs,
+constructs one Experience, then loads Experiences for application-layer idempotency. Only a fully
+validated zero-match candidate is saved.
+
+The scope is `(decision_review_id, "review_experience_promotion", idempotency_key)`. Exactly one
+equivalent match returns the original Experience identity and timestamp without writing; exactly
+one different match raises `DecisionReviewPromotionIdempotencyConflictError`; more than one match
+raises `DecisionReviewPromotionIdempotencyAmbiguityError` without repository-order selection or
+arbitrary semantic comparison. Semantic equivalence excludes only generated Experience ID and
+timestamp and includes every caller-supplied Experience and ordered promotion field.
+
+Equivalent replay validates the existing provenance. `get_by_id()`, `list_experiences()`, and
+`list_for_observation()` also fail closed for promoted records when the Review graph is invalid, an
+index is out of range, or copied text differs. Plain Experience reads remain unaffected. Direct and
+Observation-derived `add` paths keep their existing inputs and do not acquire idempotency or
+promotion requirements.
+
+One Review may produce multiple Experiences under different keys, and the same statement may be
+promoted repeatedly. Each Experience references only one Review. Corrections append; no promotion
+replacement, ranking, deletion, lifecycle state, Knowledge creation, or Consigliere behavior is
+owned here.
+
 ---
 
 # Application Errors
@@ -297,6 +324,11 @@ idempotency, summary, latest-outcome, or lifecycle query method is part of the p
 Decision filtering, cross-record validation, history ordering, and scoped idempotency—including
 fail-closed duplicate-match ambiguity—belong to `DecisionReviewService`; no relation,
 idempotency, chronology, or lifecycle query method is part of the port.
+
+`ExperienceRepository` remains limited to `save()`, `load_all()`, and `get_by_id()` for both plain
+and promoted Experiences. Review validation, copied-text integrity, Observation validation, and
+`(decision_review_id, "review_experience_promotion", idempotency_key)` scanning belong to
+`ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
 
 ## Repository return types
 
@@ -443,6 +475,17 @@ DecisionReview records round-trip through domain validation. JSON object keys ar
 validation errors. The adapter performs no Decision filtering, relation validation, chronology,
 idempotency selection, lifecycle projection, evidence ingestion, learning, or Consigliere work.
 
+## Experience adapter and promotion compatibility
+
+`JsonExperienceRepository` continues to implement the unchanged `ExperienceRepository` under
+`NeuralPaths.EXPERIENCES`, storing one JSON file per Experience and sorting filenames for
+deterministic `load_all()`. Domain validation round-trips both ordinary records and the optional
+embedded `DecisionReviewPromotion`. Old JSON without that field loads with `None` and remains plain.
+
+No migration or production adapter rewrite was required. The adapter performs no Review lookup,
+source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
+provenance. No promotion adapter, repository, path, or Brain directory exists.
+
 ---
 
 # Dependency Injection and Container
@@ -521,6 +564,12 @@ The review foundation is wired through `Container.decision_review_repository()` 
 `JsonDecisionRepository`, `JsonDecisionAcceptanceRepository`, and
 `JsonDecisionOutcomeRepository`. Brain initialization creates `NeuralPaths.DECISION_REVIEWS`.
 Decision review CLI handlers resolve the service and construct no repositories.
+
+`Container.experience_service()` supplies `JsonExperienceRepository`,
+`JsonObservationRepository`, and the existing validated `DecisionReviewService` boundary to
+`ExperienceService`. The container adds no promotion policy, link repository, path, or lifecycle
+behavior; `neural experience from-review` resolves this service like the ordinary Experience
+commands.
 
 ---
 

@@ -42,7 +42,7 @@ and a failed outcome can support a sound review.
 - Findings are required, ordered, trimmed, non-blank, case-insensitively unique, and limited to 100
   entries of at most 1000 characters each.
 - Candidate lessons use the same ordering, normalization, uniqueness, count, and length bounds, but
-  may be empty. They carry no authority to create or promote Experience or Knowledge.
+  may be empty. They are not Experience or Knowledge until a separate authorized use case succeeds.
 - Tags are trimmed and case-insensitively deduplicated while first-seen order is preserved.
 - `recorded_at` and `reviewed_at` must be timezone-aware and are normalized to UTC. Locally,
   `reviewed_at` cannot be later than `recorded_at`; the service also requires it not to precede the
@@ -99,9 +99,11 @@ renders every field. Evidence locators are retained but not opened.
 
 ## Lifecycle and learning boundary
 
-DecisionReview is orthogonal interpretive history. It does not affect `DecisionLifecycleService`.
+DecisionReview is orthogonal interpretive history. Saving one never creates Experience. The
+separate `ExperienceService.add_from_decision_review()` use case may explicitly copy selected
+findings or candidate lessons into one Experience without mutating the Review.
+DecisionReview does not affect `DecisionLifecycleService`.
 The lifecycle remains exactly `proposed`, `accepted`, `in_progress`, `succeeded`, `failed`,
 `partial`, and `outcome_unknown`; no `reviewed` state exists. A review never automatically creates
-Observation, Experience, Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, revision
-records, or Consigliere work. The next controlled slice is separate explicit Experience creation
-from review findings or candidate lessons.
+Observation, Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, revision records, or
+Consigliere work. Promotion remains explicit and a promoted Experience is not Knowledge.
