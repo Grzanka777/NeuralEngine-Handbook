@@ -45,6 +45,11 @@ Decision filtering, acceptance/action relation validation, multiple-outcome hist
 summary derivation, and lifecycle projection belong to application services; no relation,
 idempotency, summary, latest-outcome, or lifecycle query method is part of the port.
 
+`DecisionReviewRepository` is likewise limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision filtering, cross-record validation, history ordering, and scoped idempotency—including
+fail-closed duplicate-match ambiguity—belong to `DecisionReviewService`; no relation,
+idempotency, chronology, or lifecycle query method is part of the port.
+
 ## Repository return types
 
 Prefer:

@@ -68,3 +68,9 @@ The outcome foundation is wired through `Container.decision_outcome_repository()
 acceptance, and action repositories. `Container.decision_lifecycle_service()` receives those same
 four repository categories so it can validate relations and derive the canonical state. Decision
 action, outcome, summary, and state CLI handlers resolve services and construct no repositories.
+
+The review foundation is wired through `Container.decision_review_repository()` and
+`Container.decision_review_service()`. The service receives `JsonDecisionReviewRepository`,
+`JsonDecisionRepository`, `JsonDecisionAcceptanceRepository`, and
+`JsonDecisionOutcomeRepository`. Brain initialization creates `NeuralPaths.DECISION_REVIEWS`.
+Decision review CLI handlers resolve the service and construct no repositories.

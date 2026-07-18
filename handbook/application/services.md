@@ -118,9 +118,12 @@ learning record.
 `DecisionOutcomeService.add()` validates the Decision, matching acceptance, one or more unique
 actions, each action's Decision and acceptance relations, and validation time against the earliest
 linked action start before constructing or saving an immutable outcome. It uses
-`(decision_id, "decision_outcome", idempotency_key)` for application-layer idempotency. Equivalent
-replay returns the existing outcome; conflicting reuse fails without a write; another key may
-append another outcome for the same Decision.
+`(decision_id, "decision_outcome", idempotency_key)` for application-layer idempotency. Zero
+matches creates normally; exactly one equivalent match returns the existing outcome; exactly one
+different match conflicts. More than one persisted scoped match raises
+`DecisionOutcomeIdempotencyAmbiguityError`, regardless of payload equivalence or repository order,
+without selecting a duplicate or writing. Another key may append another outcome for the same
+Decision.
 
 `list_for_decision()` validates the Decision and returns all matching outcomes in repository order.
 `show()` owns explicit outcome-not-found behavior. `summary_for_decision()` validates persisted
@@ -135,3 +138,31 @@ Decision/acceptance/action/outcome relations and derives exactly `proposed`, `ac
 latest is selected by `(validated_at, outcome.id)`. It writes no status and exposes no generic
 `completed`, `resolved`, or reviewed state. Outcome creation and projection create no Review or
 learning record.
+
+## Decision review ownership
+
+`DecisionReviewService.add()` first constructs the immutable candidate, then validates Decision,
+matching acceptance, every explicit ordered outcome relation, and that `reviewed_at` is not earlier
+than the latest referenced outcome validation. It writes only after all validation. The scope is
+`(decision_id, "decision_review", idempotency_key)`: zero matches creates, exactly one equivalent
+match replays, and exactly one different match raises `DecisionReviewIdempotencyConflictError`.
+More than one match raises `DecisionReviewIdempotencyAmbiguityError` with identifying details,
+independent of repository order and duplicate payload equivalence, without arbitrary selection,
+semantic comparison against a selected duplicate, or a write.
+
+Semantic comparison for the exactly-one-match case excludes generated review ID and recording
+time plus evidence capture times. It includes ordered outcome IDs, findings, candidate lessons,
+evidence, tags, and every other caller-supplied semantic field, so ordered collections remain order
+sensitive. `list_for_decision()` validates the Decision and every persisted review relation, then
+sorts by `(reviewed_at, review.id)`. `show()` validates persisted relations and owns explicit
+review-not-found behavior.
+
+Multiple reviews may cover one Decision, one outcome, or the same ordered outcome set under
+different keys. Corrections append; the service has no replacement, supersession, deletion, or
+`current` behavior. It creates no Experience, Knowledge, Playbook, proposal, or Consigliere work
+and does not participate in `DecisionLifecycleService`.
+
+The DecisionOutcome and DecisionReview duplicate-key rules are the same reusable fail-closed
+application-service invariant: more than one persisted match for a scoped key is corruption or
+ambiguity to surface, never an ordering problem to resolve by choosing the first record. Their
+scopes and controlled ambiguity error types remain separate.

@@ -39,7 +39,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
     assert "# Decision Learning Architecture" in skill
-    assert "These commands exist at commit `5befd7c`" in skill
+    assert "These commands exist at commit `910f481e`" in skill
     assert "neural decision add" in skill
     assert "neural decision list" in skill
     assert "neural decision show DECISION_UUID" in skill
@@ -52,9 +52,19 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "neural decision outcome-history DECISION_UUID" in skill
     assert "neural decision outcome-show OUTCOME_UUID" in skill
     assert "neural decision outcome-summary DECISION_UUID" in skill
+    assert "neural decision review add DECISION_UUID" in skill
+    assert "neural decision review history DECISION_UUID" in skill
+    assert "neural decision review show REVIEW_UUID" in skill
     assert "neural decision state DECISION_UUID" in skill
     assert "DecisionOutcome foundation" in skill
-    assert "remains future-only" in skill
+    assert "DecisionReview` remains future-only" not in skill
+    assert "DecisionReview does not" not in skill
+    assert "immutable, append-only authorized interpretation" in skill
+    assert "`sound`, `flawed`, `mixed`, or `inconclusive`" in skill
+    assert "confidence accepts `low`, `medium`, or" in skill
+    assert "`high`" in skill
+    assert "DecisionReviewIdempotencyAmbiguityError" in skill
+    assert "DecisionOutcomeIdempotencyAmbiguityError" in skill
     assert "No Consigliere integration exists" in skill
     assert "no automatic persistence, ingestion, or learning" in skill
     assert "same key + equivalent semantic payload" in skill
@@ -83,6 +93,7 @@ def test_handbook_contains_all_domain_entities(tmp_path: Path) -> None:
         "PlaybookRevisionActivation",
         "PlaybookRevisionApplication",
         "DecisionOutcome",
+        "DecisionReview",
     ]
     for entity in entities:
         assert f"# {entity}" in handbook
@@ -114,14 +125,14 @@ def test_decision_engine_contains_agent_and_repository_rules(tmp_path: Path) -> 
     assert "ADR-0008" in decision_engine
 
 
-def test_handbook_contains_decision_outcome_lifecycle_and_future_boundaries(
+def test_handbook_contains_decision_review_lifecycle_and_learning_boundaries(
     tmp_path: Path,
 ) -> None:
     work_root = _copy_repo(tmp_path)
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `5befd7c` implements" in handbook
+    assert "NeuralEngine source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f`" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook
@@ -134,6 +145,9 @@ def test_handbook_contains_decision_outcome_lifecycle_and_future_boundaries(
     assert "neural decision outcome-history DECISION_UUID" in handbook
     assert "neural decision outcome-show OUTCOME_UUID" in handbook
     assert "neural decision outcome-summary DECISION_UUID" in handbook
+    assert "neural decision review add DECISION_UUID" in handbook
+    assert "neural decision review history DECISION_UUID" in handbook
+    assert "neural decision review show REVIEW_UUID" in handbook
     assert "neural decision state DECISION_UUID" in handbook
     assert "DecisionAcceptance" in handbook
     assert "DecisionAcceptance foundation" in handbook
@@ -141,7 +155,9 @@ def test_handbook_contains_decision_outcome_lifecycle_and_future_boundaries(
     assert "Decision without acceptance" in handbook
     assert "Decision with one valid acceptance" in handbook
     assert "DecisionReview" in handbook
-    assert "remains future-only" in handbook
+    assert "# DecisionReview" in handbook
+    assert "DecisionReview` remains future-only" not in handbook
+    assert "DecisionReview does not. Records" not in handbook
     assert '(project_key, "decision", idempotency_key)' in handbook
     assert "same key + different semantic payload" in handbook
     assert '(decision_id, "decision_acceptance", idempotency_key)' in handbook
@@ -160,16 +176,25 @@ def test_handbook_contains_decision_outcome_lifecycle_and_future_boundaries(
     assert "# DecisionOutcome" in handbook
     assert "`succeeded`, `failed`, `partial`, and `unknown`" in handbook
     assert '(decision_id, "decision_outcome", idempotency_key)' in handbook
+    assert "DecisionOutcomeIdempotencyAmbiguityError" in handbook
     assert "another outcome may be recorded" in handbook
     assert "DecisionOutcomeSummary" in handbook
     assert "(validated_at, outcome.id)" in handbook
     assert "outcome_unknown" in handbook
-    assert "DecisionReview foundation" in handbook
+    assert '(decision_id, "decision_review", idempotency_key)' in handbook
+    assert "DecisionReviewIdempotencyAmbiguityError" in handbook
+    assert "immutable, append-only authorized interpretation" in handbook
+    assert "`sound`, `flawed`, `mixed`, or `inconclusive`" in handbook
+    assert "confidence accepts `low`, `medium`, or" in handbook
+    assert "`high`" in handbook
+    assert "Action IDs are not persisted" in handbook
+    assert "(reviewed_at, review.id)" in handbook
+    assert "no `reviewed` state" in handbook
+    assert "explicit Experience creation" in handbook
     assert "No Consigliere integration exists" in handbook
     assert "no automatic persistence, ingestion, or learning" in handbook
     assert "ADR-0008" in handbook
     assert "partially_successful" not in handbook
-    assert "inconclusive" not in handbook
     assert "DecisionOutcome` and `DecisionReview` remain future-only" not in handbook
 
 
@@ -186,6 +211,12 @@ def test_application_architecture_contains_core_boundaries(tmp_path: Path) -> No
     assert "# Infrastructure Adapters" in application
     assert "# Dependency Injection and Container" in application
     assert "# Anti-pattern: God Repository" in application
+    assert "DecisionReviewService.add()" in application
+    assert "DecisionReviewRepository` is likewise limited" in application
+    assert "JsonDecisionReviewRepository" in application
+    assert "Container.decision_review_service()" in application
+    assert "DecisionReviewIdempotencyAmbiguityError" in application
+    assert "DecisionOutcomeIdempotencyAmbiguityError" in application
 
 
 def test_application_architecture_includes_accepted_adrs(tmp_path: Path) -> None:

@@ -68,20 +68,24 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `5befd7c` implements separate immutable `Decision`, `DecisionAcceptance`,
-`DecisionAction`, and `DecisionOutcome` records, persistence-focused ports and JSON adapters,
-application services, container wiring, thin proposal/acceptance/action/outcome CLI commands, and
-the canonical `DecisionLifecycleService`. An action records work performed; only a linked outcome
-records factual results and validation evidence.
+Source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements separate immutable
+`Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
+records, persistence-focused ports and JSON adapters, application services, container wiring,
+thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
+`DecisionLifecycleService`. An action records work performed; only a linked outcome records
+factual results and validation evidence; a review records authorized interpretation.
 
 `DecisionOutcome` links one Decision, its acceptance, and one or more ordered unique actions. Its
 result is exactly `succeeded`, `failed`, `partial`, or `unknown`; scalar metrics are immutable.
 Multiple outcomes form history, and the non-persisted `DecisionOutcomeSummary` derives counts and
 the latest outcome using `(validated_at, outcome.id)` rather than repository order.
+`DecisionReview` targets an explicit ordered non-empty set of outcomes for one Decision and
+acceptance. Multiple reviews form immutable history ordered by `(reviewed_at, review.id)`.
 
-The canonical lifecycle states are exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
-`failed`, `partial`, and `outcome_unknown`. `DecisionReview` and a reviewed state remain
-future-only. Outcome creation does not create learning. There is no execution engine, lifecycle
-reversal, ingestion, automatic learning or evolution, generic event replay, or Consigliere
-integration. The authoritative implemented contract and future boundary are defined in
-`handbook/architecture/decision-learning.md`; the next milestone is the DecisionReview foundation.
+The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
+`failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
+`reviewed` state. Outcome or review creation does not create learning. There is no execution
+engine, lifecycle reversal, ingestion, automatic learning or evolution, generic event replay, or
+Consigliere integration. The authoritative implemented contract and future boundary are defined
+in `handbook/architecture/decision-learning.md`; the recommended next controlled slice is
+separate explicit Experience creation from review findings or candidate lessons.

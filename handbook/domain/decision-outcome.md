@@ -42,8 +42,12 @@ bounded to 1000 characters, and nested values are rejected. JSON serialization s
 
 Idempotency is scoped by `(decision_id, "decision_outcome", idempotency_key)`. Equivalent replay
 returns the existing outcome. Reusing the same scoped key with a different semantic payload fails
-without a write. Generated outcome ID, recording time, and evidence capture times are excluded
-from semantic equivalence; a different key may append another outcome for the same Decision.
+without a write. If more than one persisted outcome matches the scoped key,
+`DecisionOutcomeIdempotencyAmbiguityError` is raised whether their payloads are equivalent or
+different. The service never chooses an arbitrary duplicate, the result is independent of
+repository enumeration order, and no write occurs. Generated outcome ID, recording time, and
+evidence capture times are excluded from the exactly-one-match semantic comparison; a different
+key may append another outcome for the same Decision.
 
 `DecisionOutcomeSummary` is an immutable, non-persisted read model derived on demand. It reports
 outcome count, latest result and validation time, distinct linked-action count, counts for every
@@ -57,6 +61,7 @@ order.
 `outcome_unknown`. Earlier outcomes remain available as history. No `completed` or `resolved`
 lifecycle state exists.
 
-DecisionReview is not implemented. Recording an outcome does not review a Decision and does not
-create Observation, Experience, Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, or
-automatic learning. The next milestone is the separate DecisionReview foundation.
+Recording an outcome does not review a Decision and does not create Observation, Experience,
+Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal, or automatic learning. The separately
+implemented DecisionReview foundation interprets explicit outcomes without rewriting them or
+changing lifecycle state.

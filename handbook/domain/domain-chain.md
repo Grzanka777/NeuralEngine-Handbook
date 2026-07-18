@@ -39,9 +39,9 @@ Confirmed example:
 
 ## Complementary Decision Learning chain
 
-The implemented Decision, DecisionAcceptance, DecisionAction, and DecisionOutcome foundations
-record a bounded proposed choice, explicit authorization, work performed, and factual results
-after Observation context:
+The implemented Decision, DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview
+foundations record a bounded proposed choice, explicit authorization, work performed, factual
+results, and authorized interpretation after Observation context:
 
 ```text
 Observation
@@ -49,14 +49,16 @@ Observation
 → DecisionAcceptance
 → DecisionAction
 → DecisionOutcome
-→ future DecisionReview
-→ Experience
-→ Knowledge
+→ DecisionReview
+→ explicitly created Experience
+→ explicitly created Knowledge
 ```
 
 This is a complementary provenance path, not a replacement for the canonical domain chain.
-DecisionOutcome is factual; Experience is interpreted; Knowledge is generalized; Playbook remains
-a separately created repeatable procedure. DecisionOutcome may have multiple immutable records per
-Decision and does not automatically create a Review or learning artifact. Decision,
-DecisionAcceptance, DecisionAction, DecisionOutcome, and their embedded EvidenceReference values
-exist at source commit `5befd7c`; no Review or later transition in this path is automatic.
+DecisionOutcome is factual; DecisionReview is authorized interpretation; Experience captures
+separately created operational learning; Knowledge is generalized; Playbook remains a separately
+created repeatable procedure. A Decision may have multiple immutable outcomes and multiple reviews,
+including reviews over the same ordered outcome set when their idempotency keys differ. Review
+action provenance is transitive through its explicit outcomes; it does not persist action IDs.
+These records and their embedded EvidenceReference values exist at source commit `910f481e`; no
+Review-driven lifecycle transition or later learning record in this path is automatic.

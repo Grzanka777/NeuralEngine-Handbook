@@ -2,11 +2,12 @@
 
 ## Status and purpose
 
-NeuralEngine source commit `5befd7c` implements the Decision, DecisionAcceptance,
-DecisionAction, and DecisionOutcome foundations plus the canonical `DecisionLifecycleService`
-projection. They record an immutable proposed choice, explicit authorization, work performed under
-that authorization, and factual results. Each foundation persists immutable records, exposes
-application use cases, is wired through the container, and provides a thin CLI.
+NeuralEngine source commit `910f481e27302daa6d3f15bde30d678ffc9e5d2f` implements the Decision,
+DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview foundations plus the
+canonical `DecisionLifecycleService` projection. They record an immutable proposed choice,
+explicit authorization, work performed under that authorization, factual results, and authorized
+interpretation. Each foundation persists immutable records, exposes application use cases, is
+wired through the container, and provides a thin CLI.
 
 The wider Decision Learning lifecycle remains accepted future architecture. Decision tracking
 complements the existing Observation-to-Playbook chain; it does not replace it.
@@ -21,19 +22,23 @@ EvidenceReference
 DecisionAcceptance
 DecisionAction
 DecisionOutcome
+DecisionReview
 DecisionRepository
 DecisionAcceptanceRepository
 DecisionActionRepository
 DecisionOutcomeRepository
+DecisionReviewRepository
 JsonDecisionRepository
 JsonDecisionAcceptanceRepository
 JsonDecisionActionRepository
 JsonDecisionOutcomeRepository
+JsonDecisionReviewRepository
 DecisionService
 DecisionAcceptanceService
 DecisionActionService
 DecisionOutcomeService
 DecisionOutcomeSummary
+DecisionReviewService
 DecisionLifecycleService
 container wiring
 neural decision add/list/show
@@ -46,14 +51,17 @@ neural decision outcome add
 neural decision outcome-history
 neural decision outcome-show
 neural decision outcome-summary
+neural decision review add
+neural decision review history
+neural decision review show
 neural decision state
 ```
 
 Creating a Decision records a proposal. Creating a DecisionAcceptance explicitly authorizes that
 proposal for possible future work. Creating a DecisionAction records work performed under that
 acceptance. Creating a DecisionOutcome records factual results and validation evidence for one or
-more linked actions. None of these operations performs review or learning. `DecisionReview`
-remains future-only.
+more linked actions. Creating a DecisionReview records authorized interpretation over an explicit
+ordered outcome set. None of these operations automatically creates learning.
 
 ## Decision model
 
@@ -96,7 +104,7 @@ not rewrite the earlier record.
 ## EvidenceReference
 
 `EvidenceReference` is an implemented immutable value embedded in a Decision,
-DecisionAcceptance, DecisionAction, or DecisionOutcome:
+DecisionAcceptance, DecisionAction, DecisionOutcome, or DecisionReview:
 
 ```text
 kind
@@ -244,6 +252,46 @@ One Decision may have multiple outcomes. Each outcome appends factual history an
 more actions; no outcome replaces or mutates an earlier record. An outcome does not mean review,
 Experience, Knowledge, Playbook change, or automatic learning occurred.
 
+## DecisionReview foundation
+
+`DecisionReview` is an immutable, append-only authorized interpretation record with these exact
+implemented fields:
+
+```text
+id
+recorded_at
+decision_id
+acceptance_id
+outcome_ids
+reviewed_by
+reviewed_at
+assessment
+summary
+findings
+candidate_lessons
+evidence_references
+confidence
+idempotency_key
+tags
+```
+
+Assessment is exactly `sound`, `flawed`, `mixed`, or `inconclusive`; confidence is exactly `low`,
+`medium`, or `high`. Assessment is not the outcome result vocabulary: successful factual outcomes
+may support a flawed review, and failed outcomes may support a sound review.
+
+`outcome_ids` is ordered, unique, and non-empty. Findings are required ordered text; findings and
+candidate lessons each allow at most 100 case-insensitively unique entries of at most 1000
+characters. Candidate lessons may be empty and have no promotion authority. Reviewer is bounded to
+255 characters and summary to 1000; required text is trimmed and non-blank. Tags preserve
+first-seen order while removing case-insensitive duplicates. UTC-aware timestamps are normalized
+to UTC, and `reviewed_at` cannot be later than `recorded_at`.
+
+Every outcome must exist and belong to the same Decision and acceptance. Review time cannot
+precede the latest `validated_at` among selected outcomes. Action IDs are not persisted: provenance
+is transitive through `DecisionReview → DecisionOutcome[] → DecisionAction[]`. Multiple reviews
+may cover one Decision, outcome, or ordered outcome set under different keys. Corrections append;
+there is no replacement, supersession, deletion, or persisted `current` behavior.
+
 ## Persistence
 
 The persistence-focused `DecisionRepository` port implements only:
@@ -305,6 +353,20 @@ It has no relation, idempotency, latest-outcome, summary, or lifecycle query met
 and immutable scalar metrics round-trip through domain validation; malformed data fails visibly.
 The adapter performs no relation filtering, lifecycle projection, review, learning, migration, or
 ingestion.
+
+The persistence-focused `DecisionReviewRepository` implements only:
+
+```text
+save()
+load_all()
+get_by_id()
+```
+
+It has no relation, idempotency, chronology, or lifecycle query methods.
+`JsonDecisionReviewRepository` stores one deterministic sorted-key JSON file per review under
+`NeuralPaths.DECISION_REVIEWS`, and Brain initialization creates that directory. `load_all()` sorts
+filenames and every record round-trips through domain validation. Filtering, relation validation,
+history ordering, ambiguity detection, and semantic comparison remain in the application service.
 
 ## Application service
 
@@ -489,6 +551,9 @@ same scoped key + equivalent semantic payload
 same scoped key + different semantic payload
 → visible conflict, no write
 
+more than one persisted scoped match
+→ `DecisionOutcomeIdempotencyAmbiguityError`, no arbitrary selection, no write
+
 different key
 → another outcome may be recorded
 ```
@@ -507,6 +572,65 @@ linked-action count, counts for each result value, and success/failure presence.
 validates every persisted outcome-to-acceptance/action relation. Latest selection is deterministic
 by `(validated_at, outcome.id)` and never depends on repository order. The summary is derived on
 demand and is neither persisted nor cached.
+
+More than one matching persisted outcome always raises ambiguity before selecting or semantically
+comparing a record. This is independent of repository enumeration order and applies to equivalent
+and different duplicate payloads. Zero matches follows normal creation; exactly one match retains
+the equivalent-replay or conflict behavior. This hardening changes no outcome fields, vocabulary,
+relations, ordering, summary, CLI, stored schema, or lifecycle behavior.
+
+### DecisionReviewService
+
+`DecisionReviewService` implements:
+
+```text
+add()
+list_for_decision()
+show()
+```
+
+`add()` constructs the candidate first, so local domain validation precedes repository reads. It
+then requires the Decision, validates the acceptance belongs to it, loads every caller-ordered
+outcome by ID, validates Decision and acceptance ownership, and requires `reviewed_at` to be at or
+after the latest selected outcome validation. Missing or mismatched relations and invalid time all
+fail before persistence.
+
+Review idempotency is scoped by:
+
+```text
+(decision_id, "decision_review", idempotency_key)
+```
+
+```text
+zero scoped matches
+→ save the validated candidate
+
+exactly one equivalent match
+→ validate persisted relations and return existing DecisionReview
+
+exactly one different match
+→ `DecisionReviewIdempotencyConflictError`, no write
+
+more than one persisted scoped match
+→ `DecisionReviewIdempotencyAmbiguityError`, no arbitrary selection or comparison, no write
+```
+
+The ambiguity error carries Decision ID, idempotency key, and match count. Ambiguity is independent
+of repository order and applies to semantically equivalent or different duplicates. For exactly
+one match, semantic equivalence excludes generated review ID and recording time and embedded
+evidence capture times; it includes every caller-supplied semantic field. Ordered outcome IDs,
+findings, candidate lessons, evidence, and tags therefore remain order sensitive.
+
+`list_for_decision()` requires the Decision, validates every persisted relation, and sorts by
+`(reviewed_at, review.id)`. `show()` loads by ID and validates its relations. Controlled errors
+cover missing Decision, acceptance, outcome, or review; acceptance/Decision mismatch;
+outcome/Decision or outcome/acceptance mismatch; review before outcome; idempotency conflict; and
+duplicate-key ambiguity. No failing path writes.
+
+DecisionReview and DecisionOutcome share the reusable fail-closed invariant that multiple matches
+for a scoped idempotency key must be surfaced, never resolved through `next()`, first-match
+selection, repository order, or comparison with an arbitrarily chosen record. Their scopes and
+ambiguity error types remain separate.
 
 ### Canonical DecisionLifecycleService
 
@@ -566,6 +690,8 @@ JsonPlaybookRunRepository
 DecisionActionService
 JsonDecisionOutcomeRepository
 DecisionOutcomeService
+JsonDecisionReviewRepository
+DecisionReviewService
 DecisionLifecycleService
 ```
 
@@ -577,11 +703,14 @@ repositories or own validation, relation checks, persistence, eligibility, or id
 `JsonDecisionAcceptanceRepository`, and `JsonPlaybookRunRepository`. `DecisionOutcomeService`
 receives `JsonDecisionOutcomeRepository` plus Decision, acceptance, and action repositories.
 `DecisionLifecycleService` receives the Decision, acceptance, action, and outcome repositories.
-CLI handlers resolve services from the container and construct no repositories.
+`DecisionReviewService` receives `JsonDecisionReviewRepository` plus Decision, acceptance, and
+outcome repositories. `Container.decision_review_repository()` and
+`Container.decision_review_service()` expose the review composition. CLI handlers resolve services
+from the container and construct no repositories.
 
 ## Implemented CLI
 
-These commands exist at commit `5befd7c`:
+These commands exist at commit `910f481e`:
 
 ```text
 neural decision add
@@ -596,6 +725,9 @@ neural decision outcome add DECISION_UUID
 neural decision outcome-history DECISION_UUID
 neural decision outcome-show OUTCOME_UUID
 neural decision outcome-summary DECISION_UUID
+neural decision review add DECISION_UUID
+neural decision review history DECISION_UUID
+neural decision review show REVIEW_UUID
 neural decision state DECISION_UUID
 ```
 
@@ -776,6 +908,34 @@ every stored field, including evidence, metrics, idempotency key, and tags.
 result/time, distinct linked-action count, counts by result, and success/failure presence. It does
 not persist the summary.
 
+### Decision review commands
+
+`neural decision review add DECISION_UUID` requires:
+
+```text
+--acceptance-id
+--outcome-id (one or more, repeatable and ordered)
+--reviewed-by
+--reviewed-at
+--assessment
+--summary
+--finding (one or more, repeatable and ordered)
+--confidence
+--idempotency-key
+```
+
+Optional repeatable inputs are `--candidate-lesson`, `--evidence` JSON, and `--tag`. Assessment
+accepts `sound`, `flawed`, `mixed`, or `inconclusive`; confidence accepts `low`, `medium`, or
+`high`. The CLI parses ISO-8601 review time and embedded evidence but never opens evidence
+locators. Validation errors render their first message; `ValueError` and controlled
+`DecisionReviewError` failures render visibly and exit nonzero. Success prints the stored review ID
+and every review field.
+
+`neural decision review history DECISION_UUID` renders deterministic service history with columns
+`ID`, `Reviewed`, `Reviewed by`, `Assessment`, `Confidence`, `Outcome IDs`, and `Summary`. An
+existing Decision with no reviews renders `No review history found for Decision: ...`.
+`neural decision review show REVIEW_UUID` renders every field after persisted relation validation.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
@@ -804,12 +964,12 @@ Decision
 - `DecisionAcceptance` is the implemented explicit authorization for possible future execution.
 - `DecisionAction` is the implemented record of work performed under an accepted Decision.
 - `DecisionOutcome` is the implemented factual result and validation evidence record.
-- `DecisionReview` would assess outcomes and hold candidate lessons.
+- `DecisionReview` is the implemented authorized interpretation over explicit ordered outcomes.
 
-The first four records exist; DecisionReview does not. Records remain immutable semantic records
-rather than fields on a mutable Decision or a duplicate generic event stream. A proposed option is
-not an acceptance, acceptance is not execution, an outcome is not a review or Experience, and
-candidate lessons are not automatically Knowledge or a Playbook change.
+All five records exist. Records remain immutable semantic records rather than fields on a mutable
+Decision or a duplicate generic event stream. A proposed option is not an acceptance, acceptance
+is not execution, an outcome is not a review or Experience, and review findings or candidate
+lessons are not automatically Experience, Knowledge, or a Playbook change.
 
 The currently derivable projection is only:
 
@@ -851,7 +1011,7 @@ Observation
 → DecisionAcceptance
 → DecisionAction
 → DecisionOutcome
-→ future DecisionReview
+→ DecisionReview
 → explicitly created Experience
 → explicitly created Knowledge
 ```
@@ -878,7 +1038,7 @@ prompt
 → post-work lesson
 ```
 
-Commit `5befd7c` does not capture or ingest those events automatically. Automatic candidates and
+Commit `910f481e` does not capture or ingest those events automatically. Automatic candidates and
 manual confirmation remain future concepts; no automatic persistence, ingestion, or learning
 exists.
 
@@ -887,10 +1047,9 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `5befd7c` does not implement:
+Commit `910f481e` does not implement:
 
 ```text
-DecisionReview
 execution engine
 command/shell execution
 rejection
@@ -912,19 +1071,19 @@ Consigliere integration
 
 It also does not execute commands referenced by evidence, open locators, automatically accept
 Decisions, materialize Playbook revisions, or infer outcomes from `completed_at`. Explicit user
-requests are required to create Decision, DecisionAcceptance, DecisionAction, or DecisionOutcome
-records.
+requests are required to create Decision, DecisionAcceptance, DecisionAction, DecisionOutcome, or
+DecisionReview records.
 
 ## Recommended next milestone
 
-The one recommended next controlled slice is:
+The recommended next controlled slice is:
 
 ```text
-DecisionReview foundation
+separate explicit Experience creation from DecisionReview findings or candidate lessons
 ```
 
-It must remain separate from automatic Experience, Knowledge, Playbook, PlaybookEvaluation, or
-EvolutionProposal creation.
+It must preserve explicit authority and remain separate from automatic Knowledge, Playbook,
+PlaybookEvaluation, EvolutionProposal, or Consigliere creation.
 
 ## Handbook synchronization policy
 

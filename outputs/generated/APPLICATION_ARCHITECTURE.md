@@ -120,9 +120,12 @@ learning record.
 `DecisionOutcomeService.add()` validates the Decision, matching acceptance, one or more unique
 actions, each action's Decision and acceptance relations, and validation time against the earliest
 linked action start before constructing or saving an immutable outcome. It uses
-`(decision_id, "decision_outcome", idempotency_key)` for application-layer idempotency. Equivalent
-replay returns the existing outcome; conflicting reuse fails without a write; another key may
-append another outcome for the same Decision.
+`(decision_id, "decision_outcome", idempotency_key)` for application-layer idempotency. Zero
+matches creates normally; exactly one equivalent match returns the existing outcome; exactly one
+different match conflicts. More than one persisted scoped match raises
+`DecisionOutcomeIdempotencyAmbiguityError`, regardless of payload equivalence or repository order,
+without selecting a duplicate or writing. Another key may append another outcome for the same
+Decision.
 
 `list_for_decision()` validates the Decision and returns all matching outcomes in repository order.
 `show()` owns explicit outcome-not-found behavior. `summary_for_decision()` validates persisted
@@ -137,6 +140,34 @@ Decision/acceptance/action/outcome relations and derives exactly `proposed`, `ac
 latest is selected by `(validated_at, outcome.id)`. It writes no status and exposes no generic
 `completed`, `resolved`, or reviewed state. Outcome creation and projection create no Review or
 learning record.
+
+## Decision review ownership
+
+`DecisionReviewService.add()` first constructs the immutable candidate, then validates Decision,
+matching acceptance, every explicit ordered outcome relation, and that `reviewed_at` is not earlier
+than the latest referenced outcome validation. It writes only after all validation. The scope is
+`(decision_id, "decision_review", idempotency_key)`: zero matches creates, exactly one equivalent
+match replays, and exactly one different match raises `DecisionReviewIdempotencyConflictError`.
+More than one match raises `DecisionReviewIdempotencyAmbiguityError` with identifying details,
+independent of repository order and duplicate payload equivalence, without arbitrary selection,
+semantic comparison against a selected duplicate, or a write.
+
+Semantic comparison for the exactly-one-match case excludes generated review ID and recording
+time plus evidence capture times. It includes ordered outcome IDs, findings, candidate lessons,
+evidence, tags, and every other caller-supplied semantic field, so ordered collections remain order
+sensitive. `list_for_decision()` validates the Decision and every persisted review relation, then
+sorts by `(reviewed_at, review.id)`. `show()` validates persisted relations and owns explicit
+review-not-found behavior.
+
+Multiple reviews may cover one Decision, one outcome, or the same ordered outcome set under
+different keys. Corrections append; the service has no replacement, supersession, deletion, or
+`current` behavior. It creates no Experience, Knowledge, Playbook, proposal, or Consigliere work
+and does not participate in `DecisionLifecycleService`.
+
+The DecisionOutcome and DecisionReview duplicate-key rules are the same reusable fail-closed
+application-service invariant: more than one persisted match for a scoped key is corruption or
+ambiguity to surface, never an ordering problem to resolve by choosing the first record. Their
+scopes and controlled ambiguity error types remain separate.
 
 ---
 
@@ -261,6 +292,11 @@ application services; no relation, idempotency, or lifecycle query method is par
 Decision filtering, acceptance/action relation validation, multiple-outcome history, idempotency,
 summary derivation, and lifecycle projection belong to application services; no relation,
 idempotency, summary, latest-outcome, or lifecycle query method is part of the port.
+
+`DecisionReviewRepository` is likewise limited to `save()`, `load_all()`, and `get_by_id()`.
+Decision filtering, cross-record validation, history ordering, and scoped idempotency—including
+fail-closed duplicate-match ambiguity—belong to `DecisionReviewService`; no relation,
+idempotency, chronology, or lifecycle query method is part of the port.
 
 ## Repository return types
 
@@ -398,6 +434,15 @@ file names, and malformed data surfaces validation errors. The adapter performs 
 validation or filtering, latest-outcome selection, summary or lifecycle projection, idempotency
 decision, migration, ingestion, review, or learning.
 
+## Decision review adapter
+
+`JsonDecisionReviewRepository` implements `DecisionReviewRepository` and stores one JSON file per
+review under `NeuralPaths.DECISION_REVIEWS`; Brain initialization creates the directory. Complete
+DecisionReview records round-trip through domain validation. JSON object keys are serialized with
+`indent=2` and `sort_keys=True`, `load_all()` sorts filenames, and malformed data surfaces
+validation errors. The adapter performs no Decision filtering, relation validation, chronology,
+idempotency selection, lifecycle projection, evidence ingestion, learning, or Consigliere work.
+
 ---
 
 # Dependency Injection and Container
@@ -470,6 +515,12 @@ The outcome foundation is wired through `Container.decision_outcome_repository()
 acceptance, and action repositories. `Container.decision_lifecycle_service()` receives those same
 four repository categories so it can validate relations and derive the canonical state. Decision
 action, outcome, summary, and state CLI handlers resolve services and construct no repositories.
+
+The review foundation is wired through `Container.decision_review_repository()` and
+`Container.decision_review_service()`. The service receives `JsonDecisionReviewRepository`,
+`JsonDecisionRepository`, `JsonDecisionAcceptanceRepository`, and
+`JsonDecisionOutcomeRepository`. Brain initialization creates `NeuralPaths.DECISION_REVIEWS`.
+Decision review CLI handlers resolve the service and construct no repositories.
 
 ---
 

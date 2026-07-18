@@ -66,3 +66,12 @@ validation. JSON object keys and metric keys are serialized deterministically, `
 file names, and malformed data surfaces validation errors. The adapter performs no relation
 validation or filtering, latest-outcome selection, summary or lifecycle projection, idempotency
 decision, migration, ingestion, review, or learning.
+
+## Decision review adapter
+
+`JsonDecisionReviewRepository` implements `DecisionReviewRepository` and stores one JSON file per
+review under `NeuralPaths.DECISION_REVIEWS`; Brain initialization creates the directory. Complete
+DecisionReview records round-trip through domain validation. JSON object keys are serialized with
+`indent=2` and `sort_keys=True`, `load_all()` sorts filenames, and malformed data surfaces
+validation errors. The adapter performs no Decision filtering, relation validation, chronology,
+idempotency selection, lifecycle projection, evidence ingestion, learning, or Consigliere work.
