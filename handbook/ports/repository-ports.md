@@ -55,6 +55,13 @@ and promoted Experiences. Review validation, copied-text integrity, Observation 
 `(decision_review_id, "review_experience_promotion", idempotency_key)` scanning belong to
 `ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
 
+`KnowledgeRepository` also remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Knowledge membership filtering and complete relation validation remain in `KnowledgeService`.
+KnowledgeService does not use `ExperienceRepository` directly; its separate application-facing
+`ExperienceReader` exposes only validated `get_by_id()` behavior implemented by
+`ExperienceService`. No Knowledge/Experience relation query or promotion-integrity method is added
+to either repository port.
+
 ## Repository return types
 
 Prefer:

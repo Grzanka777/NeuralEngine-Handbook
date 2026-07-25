@@ -196,6 +196,43 @@ promoted repeatedly. Each Experience references only one Review. Corrections app
 replacement, ranking, deletion, lifecycle state, Knowledge creation, or Consigliere behavior is
 owned here.
 
+## Knowledge-to-Experience integrity ownership
+
+`KnowledgeService` keeps its existing public methods:
+
+```text
+add()
+add_from_experience()
+list_knowledge()
+list_for_experience()
+get_by_id()
+```
+
+It depends on `KnowledgeRepository` plus a narrow application-facing `ExperienceReader` protocol
+that exposes only `get_by_id()`. `ExperienceService` implements that reader, and its
+`get_by_id()` remains the single owner of persisted DecisionReview-promotion provenance
+validation. KnowledgeService does not depend on `ExperienceRepository`, inspect promotion fields,
+load DecisionReview directly, or translate canonical DecisionReview and promotion errors.
+
+`add()` rejects an empty Experience ID list before any relation read. It validates supplied IDs in
+caller order through the reader, preserves order and duplicates, constructs Knowledge only after
+all reads succeed, and then saves once. `add_from_experience()` validates its one source through
+the same reader and performs no save for a missing or corrupt source.
+
+`list_knowledge()` validates every relation of every loaded record in repository and relation
+order, then returns the complete list; it does not skip, repair, filter, or partially return
+invalid records. `get_by_id()` performs no Experience read for an absent Knowledge item and
+validates every relation of a present item. `list_for_experience()` validates the requested
+Experience first, filters in repository order, validates every relation of every matching record,
+and deliberately does not validate unrelated Knowledge records.
+
+Missing Experience relations retain `ExperienceNotFoundError`. Existing `DecisionReviewError` and
+`DecisionReviewPromotionError` instances propagate unchanged. The validation guarantee is exactly
+the existing `ExperienceService.get_by_id()` contract, including Review graph, selector, and
+copied-text integrity; it does not recursively revalidate every Observation or DecisionAction
+relation. One validated Experience read occurs per stored relation, including duplicates. This
+linear fail-closed cost is accepted; no caching, batching, or deduplication is implemented.
+
 ---
 
 # Application Errors
@@ -230,6 +267,23 @@ raise Exception("something failed")
 - Missing application resources use application errors.
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
+
+## Knowledge-to-Experience integrity errors
+
+KnowledgeService retains `ExperienceNotFoundError` for missing Experience relations. It propagates
+existing `DecisionReviewError` and `DecisionReviewPromotionError` instances unchanged when
+`ExperienceService.get_by_id()` finds corrupt promoted ancestry. It does not wrap them or create a
+parallel Knowledge-specific taxonomy.
+
+The CLI renders controlled nonzero failures without tracebacks for:
+
+```text
+neural knowledge add
+neural knowledge from-experience
+neural knowledge list
+neural knowledge show
+neural experience knowledge
+```
 
 ---
 
@@ -270,6 +324,19 @@ A port change requires:
 - review of service call sites,
 - updated contract tests,
 - full validation.
+
+## Narrow application reader boundary
+
+`ExperienceReader` is defined beside `KnowledgeService` because it describes one application
+service's validated read need rather than a persistence contract. It exposes only:
+
+```text
+get_by_id(experience_id)
+```
+
+`ExperienceService` satisfies the protocol structurally. The protocol prevents KnowledgeService
+from depending on the broader raw `ExperienceRepository` surface or duplicating promoted
+Experience validation. No repository port changed for this boundary.
 
 ---
 
@@ -329,6 +396,13 @@ idempotency, chronology, or lifecycle query method is part of the port.
 and promoted Experiences. Review validation, copied-text integrity, Observation validation, and
 `(decision_review_id, "review_experience_promotion", idempotency_key)` scanning belong to
 `ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
+
+`KnowledgeRepository` also remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Knowledge membership filtering and complete relation validation remain in `KnowledgeService`.
+KnowledgeService does not use `ExperienceRepository` directly; its separate application-facing
+`ExperienceReader` exposes only validated `get_by_id()` behavior implemented by
+`ExperienceService`. No Knowledge/Experience relation query or promotion-integrity method is added
+to either repository port.
 
 ## Repository return types
 
@@ -486,6 +560,13 @@ No migration or production adapter rewrite was required. The adapter performs no
 source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
 provenance. No promotion adapter, repository, path, or Brain directory exists.
 
+## Knowledge adapter compatibility
+
+`JsonKnowledgeRepository` and `KnowledgeRepository` remain unchanged. Knowledge-to-Experience
+integrity is enforced by application composition through `ExperienceReader` and
+`ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
+format, migration, relation index, second write, or repair-on-read behavior was added.
+
 ---
 
 # Dependency Injection and Container
@@ -570,6 +651,21 @@ Decision review CLI handlers resolve the service and construct no repositories.
 `ExperienceService`. The container adds no promotion policy, link repository, path, or lifecycle
 behavior; `neural experience from-review` resolves this service like the ordinary Experience
 commands.
+
+`Container.knowledge_service()` supplies `JsonKnowledgeRepository` and the constructed
+`ExperienceService` as the narrow `ExperienceReader`. It does not inject a raw
+`JsonExperienceRepository` into KnowledgeService. This keeps promoted-Experience validation in
+one owner and preserves an acyclic graph:
+
+```text
+KnowledgeService
+→ ExperienceReader
+→ ExperienceService
+→ ExperienceRepository + ObservationRepository + DecisionReviewService
+```
+
+ExperienceService has no KnowledgeService dependency, and the container adds no Knowledge
+validation or learning policy.
 
 ---
 

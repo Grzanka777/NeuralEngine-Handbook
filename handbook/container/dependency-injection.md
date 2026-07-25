@@ -80,3 +80,18 @@ Decision review CLI handlers resolve the service and construct no repositories.
 `ExperienceService`. The container adds no promotion policy, link repository, path, or lifecycle
 behavior; `neural experience from-review` resolves this service like the ordinary Experience
 commands.
+
+`Container.knowledge_service()` supplies `JsonKnowledgeRepository` and the constructed
+`ExperienceService` as the narrow `ExperienceReader`. It does not inject a raw
+`JsonExperienceRepository` into KnowledgeService. This keeps promoted-Experience validation in
+one owner and preserves an acyclic graph:
+
+```text
+KnowledgeService
+→ ExperienceReader
+→ ExperienceService
+→ ExperienceRepository + ObservationRepository + DecisionReviewService
+```
+
+ExperienceService has no KnowledgeService dependency, and the container adds no Knowledge
+validation or learning policy.

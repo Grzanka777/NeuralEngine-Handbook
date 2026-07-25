@@ -14,7 +14,12 @@ a generic event stream. Review is orthogonal append-only history.
 Selected Review interpretation becomes Experience only through an explicit authorized use case.
 Promotion provenance is embedded immutably in the existing Experience rather than represented by
 a link aggregate, second write, new repository, or new lifecycle state. Experience-to-Knowledge
-remains a separate explicit decision.
+generalization remains explicit through the existing generic Knowledge paths.
+
+Knowledge uses `Knowledge.experience_ids` as its durable relation. Every supplied or returned
+Experience relation is read through a narrow `ExperienceReader` implemented by
+`ExperienceService.get_by_id()`, preserving one canonical owner for persisted Review-promotion
+integrity. KnowledgeService does not read ExperienceRepository directly or copy Review provenance.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -34,6 +39,10 @@ advisory layer rather than authoritative storage.
 - The same checkpoint implements explicit ordered DecisionReview statement promotion into one
   existing Experience with embedded immutable provenance, fail-closed read integrity, and scoped
   application-layer idempotency. It does not implement automatic learning.
+- Source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6` hardens explicit Knowledge
+  creation and all Knowledge read/navigation modes through the validated Experience reader. The
+  container injects ExperienceService; canonical missing-Experience and DecisionReview/promotion
+  errors fail closed without a parallel Knowledge error taxonomy.
 - The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
   and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
   repository order. No generic completed, resolved, or reviewed state exists.
@@ -52,5 +61,10 @@ advisory layer rather than authoritative storage.
 - Automatic promotion and a separate promotion/link aggregate were rejected because authority and
   provenance belong in one explicit Experience write. Repository-order duplicate selection was
   rejected in favor of a dedicated fail-closed ambiguity error.
-- The next controlled downstream step remains a separate explicit Experience-to-Knowledge decision
-  or use case; Knowledge, Playbook, and evolution creation remain explicit.
+- No Knowledge schema, authority, idempotency, repository, adapter, or command changed. Duplicate
+  Experience IDs remain supported, and read validation performs one validated read per relation.
+- `neural knowledge add` and `neural knowledge from-experience` are explicit creation;
+  `neural experience knowledge` is read-only navigation.
+- Storing Knowledge proves durable capture, not later operational use or improved decisions. That
+  use-and-feedback gap remains future work; Knowledge, Playbook, and evolution creation remain
+  explicit.

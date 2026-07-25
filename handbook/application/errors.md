@@ -30,3 +30,20 @@ raise Exception("something failed")
 - Missing application resources use application errors.
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
+
+## Knowledge-to-Experience integrity errors
+
+KnowledgeService retains `ExperienceNotFoundError` for missing Experience relations. It propagates
+existing `DecisionReviewError` and `DecisionReviewPromotionError` instances unchanged when
+`ExperienceService.get_by_id()` finds corrupt promoted ancestry. It does not wrap them or create a
+parallel Knowledge-specific taxonomy.
+
+The CLI renders controlled nonzero failures without tracebacks for:
+
+```text
+neural knowledge add
+neural knowledge from-experience
+neural knowledge list
+neural knowledge show
+neural experience knowledge
+```

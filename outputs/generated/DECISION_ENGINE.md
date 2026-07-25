@@ -104,7 +104,7 @@ New behavior
 
 ## Status and purpose
 
-NeuralEngine source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements the Decision,
+NeuralEngine source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6` implements the Decision,
 DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview foundations plus the
 canonical `DecisionLifecycleService` projection. They record an immutable proposed choice,
 explicit authorization, work performed under that authorization, factual results, and authorized
@@ -145,6 +145,8 @@ DecisionOutcomeService
 DecisionOutcomeSummary
 DecisionReviewService
 ExperienceService.add_from_decision_review
+ExperienceReader
+KnowledgeService
 DecisionLifecycleService
 container wiring
 neural decision add/list/show
@@ -161,6 +163,9 @@ neural decision review add
 neural decision review history
 neural decision review show
 neural experience from-review
+neural knowledge add/list/show
+neural knowledge from-experience
+neural experience knowledge
 neural decision state
 ```
 
@@ -403,7 +408,7 @@ there is no replacement, supersession, deletion, or persisted `current` behavior
 
 ## DecisionReview-to-Experience promotion foundation
 
-At source commit `12097fe`, `Experience` has optional immutable
+At source commit `1b45beb`, `Experience` has optional immutable
 `decision_review_promotion: DecisionReviewPromotion | None`. Plain direct and
 Observation-derived Experiences retain `None`. Promotion contains exactly one Review ID, ordered
 non-empty immutable source statements, promoter, reason, and idempotency key. Each statement stores
@@ -521,6 +526,18 @@ get_by_id()
 validation. Old JSON without the field loads with `None`. No migration, new path, Brain directory,
 link record, promotion repository, second write, or production adapter rewrite was introduced.
 Idempotency and Review integrity remain application policy.
+
+The existing `KnowledgeRepository` remains limited to:
+
+```text
+save()
+load_all()
+get_by_id()
+```
+
+No Knowledge relation or provenance query was added. `JsonKnowledgeRepository` and the Knowledge
+JSON schema are unchanged. Knowledge membership filtering and relation validation remain
+application policy.
 
 ## Application service
 
@@ -820,6 +837,49 @@ graph, selector bounds, and exact copied text. Missing or malformed provenance f
 repair or skipping; plain records bypass promotion validation. The use case owns no Knowledge,
 Playbook, evolution, lifecycle, evidence, or Consigliere behavior.
 
+### KnowledgeService validated Experience boundary
+
+The existing generic `KnowledgeService` implements:
+
+```text
+add()
+add_from_experience()
+list_knowledge()
+list_for_experience()
+get_by_id()
+```
+
+It depends on `KnowledgeRepository` and the application-facing `ExperienceReader.get_by_id()`
+protocol defined beside the service. `ExperienceService` implements the protocol, so
+`ExperienceService.get_by_id()` remains the single owner of persisted Review graph, promotion
+selector, and copied-text validation. KnowledgeService no longer reads `ExperienceRepository`
+directly, loads DecisionReview, or duplicates another service's validation. ExperienceService has
+no KnowledgeService dependency, so the graph is acyclic.
+
+`add()` rejects empty evidence before relation reads, validates supplied Experience IDs in caller
+order, preserves duplicates, and saves only after every validation succeeds.
+`add_from_experience()` validates its source through the same reader and performs no save when it
+is missing or corrupt.
+
+`list_knowledge()` validates every Experience relation of every loaded record in repository and
+relation order and fails closed without partial results. `get_by_id()` performs no Experience read
+when Knowledge is absent and validates every relation of a present record.
+`list_for_experience()` validates the requested Experience first, filters Knowledge in repository
+order, validates every relation of every matching record, and deliberately leaves unrelated
+Knowledge records outside this scoped validation.
+
+Missing relations continue to raise `ExperienceNotFoundError`. Existing `DecisionReviewError` and
+`DecisionReviewPromotionError` instances propagate unchanged. The five affected CLI surfaces
+render those failures as controlled nonzero errors without tracebacks. Validation is exactly the
+existing ExperienceService read contract; it does not recursively revalidate every Observation or
+DecisionAction ancestry relation.
+
+This hardening changes no Knowledge or Experience schema, authority, cardinality, duplicate-ID
+behavior, Knowledge idempotency, repository, adapter, JSON format, command, or automatic behavior.
+It performs one validated Experience read per stored relation, including duplicates. The linear
+read amplification is accepted in favor of fail-closed integrity; no caching, batching, or
+deduplication was added.
+
 ### Canonical DecisionLifecycleService
 
 `DecisionLifecycleService` is the only canonical owner of the current lifecycle projection. It
@@ -882,6 +942,8 @@ JsonDecisionReviewRepository
 DecisionReviewService
 JsonExperienceRepository
 ExperienceService
+JsonKnowledgeRepository
+KnowledgeService
 DecisionLifecycleService
 ```
 
@@ -900,10 +962,13 @@ from the container and construct no repositories.
 `Container.experience_service()` injects `JsonExperienceRepository`,
 `JsonObservationRepository`, and that validated `DecisionReviewService` boundary into
 `ExperienceService`; the container owns no promotion policy.
+`Container.knowledge_service()` injects `JsonKnowledgeRepository` and the constructed
+`ExperienceService` as `ExperienceReader`; it does not supply a raw `JsonExperienceRepository` to
+KnowledgeService.
 
 ## Implemented CLI
 
-These commands exist at commit `12097fe`:
+These commands exist at commit `1b45beb`:
 
 ```text
 neural decision add
@@ -927,6 +992,10 @@ neural experience from-review REVIEW_UUID
 neural experience list
 neural experience show EXPERIENCE_UUID
 neural experience knowledge EXPERIENCE_UUID
+neural knowledge add
+neural knowledge from-experience EXPERIENCE_UUID
+neural knowledge list
+neural knowledge show KNOWLEDGE_UUID
 neural observation experiences OBSERVATION_UUID
 neural decision state DECISION_UUID
 ```
@@ -1167,6 +1236,26 @@ requires title, action, outcome, and result. Observation IDs and tags remain opt
 supported. List, show, Experience-to-Knowledge navigation, and Observation-to-Experience navigation
 remain read-only. Ordinary Experience creation requires no promotion metadata or idempotency key.
 
+### Knowledge commands and controlled integrity failures
+
+`neural knowledge add` and `neural knowledge from-experience EXPERIENCE_UUID` are the existing
+explicit creation paths. They accept caller-supplied Knowledge content and do not infer, promote,
+or automatically create it. `neural experience knowledge EXPERIENCE_UUID` is read-only navigation.
+
+All five Knowledge-to-Experience surfaces are protected by the validated reader:
+
+```text
+neural knowledge add
+neural knowledge from-experience EXPERIENCE_UUID
+neural knowledge list
+neural knowledge show KNOWLEDGE_UUID
+neural experience knowledge EXPERIENCE_UUID
+```
+
+Missing Experience and canonical DecisionReview/promotion-integrity errors render controlled
+messages and exit nonzero without a traceback. No Knowledge-specific promotion error taxonomy,
+new command, or success-output change exists.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
@@ -1203,6 +1292,19 @@ Decision or a duplicate generic event stream. A proposed option is not an accept
 is not execution, an outcome is not a review or Experience, and review findings or candidate
 lessons are not Experience until promotion succeeds and are never automatically Knowledge or a
 Playbook change.
+
+Explicit Knowledge capture is a later, separate act through the existing generic Knowledge
+commands. Its durable transitive provenance is:
+
+```text
+Knowledge.experience_ids
+→ Experience.decision_review_promotion
+→ DecisionReview
+```
+
+The Review provenance is not copied into Knowledge. `neural experience knowledge` only navigates
+this relation; it does not create or promote Knowledge. Storing Knowledge proves explicit durable
+capture, not that the Knowledge was used in, or improved, a later Decision.
 
 The currently derivable projection is only:
 
@@ -1272,7 +1374,7 @@ prompt
 → post-work lesson
 ```
 
-Commit `12097fe` does not capture or ingest those events automatically. Automatic candidates and
+Commit `1b45beb` does not capture or ingest those events automatically. Automatic candidates and
 manual confirmation remain future concepts; no automatic persistence, ingestion, or learning
 exists.
 
@@ -1281,7 +1383,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `12097fe` does not implement:
+Commit `1b45beb` does not implement:
 
 ```text
 execution engine
@@ -1298,7 +1400,9 @@ git ingestion
 automatic Observation creation
 automatic Experience creation
 automatic Knowledge creation
-Experience-to-Knowledge promotion
+special DecisionReview-to-Knowledge promotion
+durable Knowledge use in a later Decision
+Knowledge effectiveness feedback
 automatic Playbook creation or mutation
 automatic evolution
 Consigliere integration
@@ -1309,16 +1413,18 @@ Decisions, materialize Playbook revisions, or infer outcomes from `completed_at`
 requests are required to create Decision, DecisionAcceptance, DecisionAction, DecisionOutcome, or
 DecisionReview records and to promote Review statements into Experience.
 
-## Recommended next milestone
+## Remaining learning-loop gap
 
-The recommended next controlled slice is:
+The remaining controlled learning-loop gap is:
 
 ```text
-separate explicit Experience-to-Knowledge decision or use case
+durable operational Knowledge use and feedback
 ```
 
-It must preserve explicit authority and remain separate from automatic Knowledge, Playbook,
-PlaybookEvaluation, EvolutionProposal, lifecycle, or Consigliere behavior.
+Explicit generic Knowledge creation is already implemented. The future slice must distinguish
+retrieval from durable use, record evidence rather than infer improvement from storage, preserve
+explicit authority, and remain separate from automatic Knowledge, Playbook, PlaybookEvaluation,
+EvolutionProposal, lifecycle, or Consigliere behavior.
 
 ## Handbook synchronization policy
 
@@ -1339,6 +1445,7 @@ manually. Copying the generated skill back to NeuralEngine is outside this synch
 | Input parsing | CLI | Domain entity |
 | Output rendering | CLI | Repository |
 | Relationship navigation | Application service by default | Repository unless persistence-owned |
+| Validated cross-service relation read | Narrow application-facing reader protocol | Raw repository bypass or duplicated provenance validation |
 | Validation of domain state | Domain/application as appropriate | Infrastructure-only |
 | Provenance policy | Domain/application architecture | CLI-only |
 
@@ -1449,7 +1556,12 @@ a generic event stream. Review is orthogonal append-only history.
 Selected Review interpretation becomes Experience only through an explicit authorized use case.
 Promotion provenance is embedded immutably in the existing Experience rather than represented by
 a link aggregate, second write, new repository, or new lifecycle state. Experience-to-Knowledge
-remains a separate explicit decision.
+generalization remains explicit through the existing generic Knowledge paths.
+
+Knowledge uses `Knowledge.experience_ids` as its durable relation. Every supplied or returned
+Experience relation is read through a narrow `ExperienceReader` implemented by
+`ExperienceService.get_by_id()`, preserving one canonical owner for persisted Review-promotion
+integrity. KnowledgeService does not read ExperienceRepository directly or copy Review provenance.
 
 Decision tracking complements the existing Observation-to-Playbook chain. Evidence uses bounded
 embedded references, durable writes require explicit authority, and Consigliere remains a future
@@ -1469,6 +1581,10 @@ advisory layer rather than authoritative storage.
 - The same checkpoint implements explicit ordered DecisionReview statement promotion into one
   existing Experience with embedded immutable provenance, fail-closed read integrity, and scoped
   application-layer idempotency. It does not implement automatic learning.
+- Source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6` hardens explicit Knowledge
+  creation and all Knowledge read/navigation modes through the validated Experience reader. The
+  container injects ExperienceService; canonical missing-Experience and DecisionReview/promotion
+  errors fail closed without a parallel Knowledge error taxonomy.
 - The canonical states are exactly proposed, accepted, in-progress, succeeded, failed, partial,
   and outcome-unknown. Latest outcome selection uses validation time and outcome UUID, not
   repository order. No generic completed, resolved, or reviewed state exists.
@@ -1487,5 +1603,10 @@ advisory layer rather than authoritative storage.
 - Automatic promotion and a separate promotion/link aggregate were rejected because authority and
   provenance belong in one explicit Experience write. Repository-order duplicate selection was
   rejected in favor of a dedicated fail-closed ambiguity error.
-- The next controlled downstream step remains a separate explicit Experience-to-Knowledge decision
-  or use case; Knowledge, Playbook, and evolution creation remain explicit.
+- No Knowledge schema, authority, idempotency, repository, adapter, or command changed. Duplicate
+  Experience IDs remain supported, and read validation performs one validated read per relation.
+- `neural knowledge add` and `neural knowledge from-experience` are explicit creation;
+  `neural experience knowledge` is read-only navigation.
+- Storing Knowledge proves durable capture, not later operational use or improved decisions. That
+  use-and-feedback gap remains future work; Knowledge, Playbook, and evolution creation remain
+  explicit.

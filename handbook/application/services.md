@@ -193,3 +193,40 @@ One Review may produce multiple Experiences under different keys, and the same s
 promoted repeatedly. Each Experience references only one Review. Corrections append; no promotion
 replacement, ranking, deletion, lifecycle state, Knowledge creation, or Consigliere behavior is
 owned here.
+
+## Knowledge-to-Experience integrity ownership
+
+`KnowledgeService` keeps its existing public methods:
+
+```text
+add()
+add_from_experience()
+list_knowledge()
+list_for_experience()
+get_by_id()
+```
+
+It depends on `KnowledgeRepository` plus a narrow application-facing `ExperienceReader` protocol
+that exposes only `get_by_id()`. `ExperienceService` implements that reader, and its
+`get_by_id()` remains the single owner of persisted DecisionReview-promotion provenance
+validation. KnowledgeService does not depend on `ExperienceRepository`, inspect promotion fields,
+load DecisionReview directly, or translate canonical DecisionReview and promotion errors.
+
+`add()` rejects an empty Experience ID list before any relation read. It validates supplied IDs in
+caller order through the reader, preserves order and duplicates, constructs Knowledge only after
+all reads succeed, and then saves once. `add_from_experience()` validates its one source through
+the same reader and performs no save for a missing or corrupt source.
+
+`list_knowledge()` validates every relation of every loaded record in repository and relation
+order, then returns the complete list; it does not skip, repair, filter, or partially return
+invalid records. `get_by_id()` performs no Experience read for an absent Knowledge item and
+validates every relation of a present item. `list_for_experience()` validates the requested
+Experience first, filters in repository order, validates every relation of every matching record,
+and deliberately does not validate unrelated Knowledge records.
+
+Missing Experience relations retain `ExperienceNotFoundError`. Existing `DecisionReviewError` and
+`DecisionReviewPromotionError` instances propagate unchanged. The validation guarantee is exactly
+the existing `ExperienceService.get_by_id()` contract, including Review graph, selector, and
+copied-text integrity; it does not recursively revalidate every Observation or DecisionAction
+relation. One validated Experience read occurs per stored relation, including duplicates. This
+linear fail-closed cost is accepted; no caching, batching, or deduplication is implemented.

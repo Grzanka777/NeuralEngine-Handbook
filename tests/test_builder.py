@@ -39,7 +39,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Application CLI commands do not" in skill
     assert "Playbook content mutation" in skill
     assert "# Decision Learning Architecture" in skill
-    assert "These commands exist at commit `12097fe`" in skill
+    assert "These commands exist at commit `1b45beb`" in skill
     assert "neural decision add" in skill
     assert "neural decision list" in skill
     assert "neural decision show DECISION_UUID" in skill
@@ -76,7 +76,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "durable zero-based indexes" in skill
     assert "Old JSON without the field loads with `None`" in skill
     assert "fails closed without" in skill
-    assert "separate explicit Experience-to-Knowledge" in skill
+    assert "durable operational Knowledge use and feedback" in skill
     assert "No Consigliere integration exists" in skill
     assert "no automatic persistence, ingestion, or learning" in skill
     assert "same key + equivalent semantic payload" in skill
@@ -149,7 +149,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e`" in handbook
+    assert "NeuralEngine source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6`" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook
@@ -220,7 +220,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     assert "Old JSON without `decision_review_promotion` remains valid" in handbook
     assert "Missing or malformed provenance fails closed" in handbook
     assert "a promoted Experience is not Knowledge" in handbook
-    assert "separate explicit Experience-to-Knowledge" in handbook
+    assert "durable operational Knowledge use and feedback" in handbook
     assert "separate explicit Experience creation from DecisionReview" not in handbook
     assert "No Consigliere integration exists" in handbook
     assert "no automatic persistence, ingestion, or learning" in handbook
@@ -267,3 +267,40 @@ def test_application_architecture_includes_accepted_adrs(tmp_path: Path) -> None
     assert "ADR-0006" in application
     assert "ADR-0007" in application
     assert application.count("Status: Accepted") >= 3
+
+
+def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    decision_engine = (work_root / "outputs/generated/DECISION_ENGINE.md").read_text(
+        encoding="utf-8"
+    )
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill, decision_engine):
+        assert "ExperienceReader" in artifact
+        assert "ExperienceService.get_by_id()" in artifact
+        assert "neural knowledge from-experience EXPERIENCE_UUID" in artifact
+        assert "neural experience knowledge" in artifact
+        assert "read-only navigation" in artifact
+        assert "durable operational Knowledge use and feedback" in artifact
+        assert (
+            "next controlled downstream step remains a separate explicit Experience-to-Knowledge"
+        ) not in artifact
+
+    assert "Knowledge.experience_ids" in handbook
+    assert "does not validate unrelated Knowledge records" in handbook
+    assert "Storing Knowledge proves explicit durable capture only" in handbook
+    assert "including duplicates" in handbook
+
+    assert "KnowledgeService does not depend on `ExperienceRepository`" in application
+    assert "per stored relation, including duplicates" in application
+    assert "does not inject a raw" in application
+    assert "No repository port changed for this boundary" in application

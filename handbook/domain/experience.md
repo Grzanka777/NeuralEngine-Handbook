@@ -34,3 +34,9 @@ derived from one Observation, or explicitly promoted from selected DecisionRevie
 
 The application layer coordinates this separate explicit transformation. Experience creation does
 not create Knowledge automatically.
+
+Knowledge creation and reads consume Experience through the narrow application-facing
+`ExperienceReader` implemented by `ExperienceService.get_by_id()`. For promoted Experiences this
+reuses the existing Review graph, selector-index, and copied-source-text validation before the
+Experience can support returned or newly created Knowledge. It does not add recursive Observation
+validation to ordinary Experience reads.

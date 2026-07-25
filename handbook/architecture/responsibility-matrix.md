@@ -10,5 +10,6 @@
 | Input parsing | CLI | Domain entity |
 | Output rendering | CLI | Repository |
 | Relationship navigation | Application service by default | Repository unless persistence-owned |
+| Validated cross-service relation read | Narrow application-facing reader protocol | Raw repository bypass or duplicated provenance validation |
 | Validation of domain state | Domain/application as appropriate | Infrastructure-only |
 | Provenance policy | Domain/application architecture | CLI-only |

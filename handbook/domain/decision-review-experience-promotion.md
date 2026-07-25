@@ -140,5 +140,7 @@ not require promotion data or an idempotency key.
 Promotion changes no canonical Decision lifecycle state and adds no `reviewed`, `promoted`, or
 `learned` state. It creates no Knowledge, Playbook, PlaybookEvaluation, EvolutionProposal,
 revision, evidence execution, automatic learning, or Consigliere work. `DecisionReview.assessment`,
-`DecisionOutcome.result`, and `Experience.result` remain distinct meanings. The next controlled
-downstream step remains a separate explicit Experience-to-Knowledge decision or use case.
+`DecisionOutcome.result`, and `Experience.result` remain distinct meanings. A later explicit
+Knowledge generalization uses the existing generic Knowledge commands and validated Experience
+reader boundary; `neural experience knowledge` remains read-only navigation. Durable Knowledge use
+and feedback remain separate future work.

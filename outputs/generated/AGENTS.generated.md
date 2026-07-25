@@ -137,7 +137,7 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `12097feb0159cc8e8831000ab04c290b56ecfc8e` implements separate immutable
+Source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6` preserves the separate immutable
 `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
 records, persistence-focused ports and JSON adapters, application services, container wiring,
 thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
@@ -157,6 +157,21 @@ statements. `ExperienceService` uses the validated Review service boundary and e
 repository; no promotion aggregate, repository, adapter, path, Brain collection, or automatic
 learning exists. Old and ordinary Experiences remain compatible.
 
+The checkpoint also hardens the existing explicit Knowledge slice. `KnowledgeService` depends on
+the narrow application-facing `ExperienceReader.get_by_id()` protocol, and the container supplies
+`ExperienceService` as its implementation. Knowledge creation and returned Knowledge relations
+therefore reuse `ExperienceService.get_by_id()` as the single owner of persisted Review-promotion
+provenance validation. The dependency remains acyclic because `ExperienceService` has no
+KnowledgeService dependency.
+
+`KnowledgeService.add()` rejects empty evidence before relation reads, validates IDs in caller
+order, preserves duplicates, and writes only after every read succeeds. `add_from_experience()`
+uses the same boundary. Complete list and present single-item reads validate every stored
+Experience relation; the scoped Experience navigation validates its requested Experience and all
+relations of matching Knowledge records while leaving unrelated records outside the query.
+Missing Experiences retain `ExperienceNotFoundError`, while canonical DecisionReview and
+promotion errors propagate unchanged.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
@@ -164,8 +179,9 @@ only the explicit promotion use case creates an Experience, which remains distin
 There is no execution engine, lifecycle reversal, ingestion, automatic learning or evolution,
 generic event replay, or
 Consigliere integration. The authoritative implemented contract and future boundary are defined
-in `handbook/architecture/decision-learning.md`; the next controlled downstream step remains a
-separate explicit Experience-to-Knowledge decision or use case.
+in `handbook/architecture/decision-learning.md`. Generic Knowledge creation is already explicit;
+`neural experience knowledge` is read-only navigation. Durable operational Knowledge use and
+feedback remain a separate future gap, and storing Knowledge does not prove later improvement.
 
 ## Agent policy
 

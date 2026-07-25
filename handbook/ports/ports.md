@@ -35,3 +35,16 @@ A port change requires:
 - review of service call sites,
 - updated contract tests,
 - full validation.
+
+## Narrow application reader boundary
+
+`ExperienceReader` is defined beside `KnowledgeService` because it describes one application
+service's validated read need rather than a persistence contract. It exposes only:
+
+```text
+get_by_id(experience_id)
+```
+
+`ExperienceService` satisfies the protocol structurally. The protocol prevents KnowledgeService
+from depending on the broader raw `ExperienceRepository` surface or duplicating promoted
+Experience validation. No repository port changed for this boundary.

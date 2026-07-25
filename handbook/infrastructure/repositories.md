@@ -86,3 +86,10 @@ embedded `DecisionReviewPromotion`. Old JSON without that field loads with `None
 No migration or production adapter rewrite was required. The adapter performs no Review lookup,
 source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
 provenance. No promotion adapter, repository, path, or Brain directory exists.
+
+## Knowledge adapter compatibility
+
+`JsonKnowledgeRepository` and `KnowledgeRepository` remain unchanged. Knowledge-to-Experience
+integrity is enforced by application composition through `ExperienceReader` and
+`ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
+format, migration, relation index, second write, or repair-on-read behavior was added.

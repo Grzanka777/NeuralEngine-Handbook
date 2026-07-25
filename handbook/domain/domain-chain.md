@@ -63,3 +63,17 @@ keys. A promoted Experience selects ordered Review statements and cannot combine
 action provenance remains transitive through explicit outcomes; promoted Experience provenance
 remains transitive through its one Review. These records exist at source commit `12097fe`; no
 Review save, promotion, lifecycle transition, or later Knowledge record in this path is automatic.
+
+At source commit `1b45beb`, explicit Knowledge capture keeps its existing durable relation:
+
+```text
+Knowledge.experience_ids
+→ Experience.decision_review_promotion
+→ DecisionReview
+```
+
+KnowledgeService traverses every returned or newly supplied Experience relation through the
+validated `ExperienceService.get_by_id()` boundary. This preserves transitive Review provenance
+without copying it into Knowledge. `neural knowledge add` and `neural knowledge from-experience`
+create explicit Knowledge; `neural experience knowledge` only navigates the relation. Durable
+capture is not a durable record that Knowledge informed or improved a later decision.
