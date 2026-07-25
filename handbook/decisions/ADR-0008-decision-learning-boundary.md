@@ -65,6 +65,10 @@ advisory layer rather than authoritative storage.
   Experience IDs remain supported, and read validation performs one validated read per relation.
 - `neural knowledge add` and `neural knowledge from-experience` are explicit creation;
   `neural experience knowledge` is read-only navigation.
-- Storing Knowledge proves durable capture, not later operational use or improved decisions. That
-  use-and-feedback gap remains future work; Knowledge, Playbook, and evolution creation remain
-  explicit.
+- Source commit `ebab369f24385494da5906f523368d81eb08d639` documents the implemented
+  Playbook-scoped contract from exact `Playbook.knowledge_ids` through Run, Evaluation, and
+  Proposal relations, plus the optional DecisionAction/DecisionOutcome bridge.
+- Storing Knowledge alone proves durable capture, not later use or improvement. Playbook-scoped
+  Knowledge use and Run feedback exist, while Knowledge-specific causality, durable retrieval or
+  recommendation events, revision-specific execution provenance, and demonstrated improvement
+  remain unsupported.

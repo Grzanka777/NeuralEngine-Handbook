@@ -26,6 +26,9 @@ Creating a revision does not mutate the Playbook, apply the proposal, activate t
 perform automatic evolution. Activation and application are represented by separate immutable
 records.
 
+A PlaybookRun has no revision ID. Revision selection or application intent therefore does not
+prove that the revision, or its exact `knowledge_ids`, was executed.
+
 ## Confirmed application rule
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns revision navigation for a playbook.

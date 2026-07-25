@@ -91,9 +91,20 @@ Knowledge.experience_ids
 → DecisionReview
 ```
 
-Storing Knowledge proves explicit durable capture only. It does not prove the Knowledge was used
-in, or improved, a later decision. Durable operational use and feedback remain a separate future
-gap.
+Storing Knowledge proves explicit durable capture only. It does not by itself prove later use or
+improvement. Durable Playbook-scoped use and Run feedback exist through:
+
+```text
+PlaybookEvaluation.run_id
+→ PlaybookRun.playbook_id
+→ Playbook.knowledge_ids
+→ Knowledge.id
+```
+
+This is feedback on the Playbook and its declared Knowledge set. It does not prove one Knowledge
+item caused an outcome, attribute contributions within a multi-Knowledge Playbook, or demonstrate
+causal or comparative improvement. Durable retrieval history, recommendation events, and
+revision-specific Run provenance are not recorded.
 
 Read validation performs one validated Experience read per stored relation, including duplicates.
 The resulting linear read amplification is an intentional fail-closed trade-off; this milestone

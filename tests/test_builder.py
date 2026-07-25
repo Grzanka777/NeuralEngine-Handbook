@@ -76,7 +76,13 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "durable zero-based indexes" in skill
     assert "Old JSON without the field loads with `None`" in skill
     assert "fails closed without" in skill
-    assert "durable operational Knowledge use and feedback" in skill
+    assert "Durable Playbook-scoped Knowledge use and Run feedback already exist" in skill
+    assert "PlaybookEvaluation.run_id" in skill
+    assert "DecisionAction.playbook_run_id?" in skill
+    assert "Run identifies a Playbook, not a PlaybookRevision" in skill
+    assert (
+        "durable operational Knowledge use and feedback remain a separate future gap" not in skill
+    )
     assert "No Consigliere integration exists" in skill
     assert "no automatic persistence, ingestion, or learning" in skill
     assert "same key + equivalent semantic payload" in skill
@@ -220,7 +226,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     assert "Old JSON without `decision_review_promotion` remains valid" in handbook
     assert "Missing or malformed provenance fails closed" in handbook
     assert "a promoted Experience is not Knowledge" in handbook
-    assert "durable operational Knowledge use and feedback" in handbook
+    assert "Durable Playbook-scoped Knowledge use and Run feedback already exist" in handbook
     assert "separate explicit Experience creation from DecisionReview" not in handbook
     assert "No Consigliere integration exists" in handbook
     assert "no automatic persistence, ingestion, or learning" in handbook
@@ -290,7 +296,13 @@ def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(
         assert "neural knowledge from-experience EXPERIENCE_UUID" in artifact
         assert "neural experience knowledge" in artifact
         assert "read-only navigation" in artifact
-        assert "durable operational Knowledge use and feedback" in artifact
+        assert "Durable Playbook-scoped Knowledge use and Run feedback already exist" in artifact
+        assert "PlaybookEvaluation.run_id" in artifact
+        assert "DecisionAction.playbook_run_id?" in artifact
+        assert (
+            "durable operational Knowledge use and feedback remain a separate future gap"
+            not in (artifact)
+        )
         assert (
             "next controlled downstream step remains a separate explicit Experience-to-Knowledge"
         ) not in artifact

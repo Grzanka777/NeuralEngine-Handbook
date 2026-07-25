@@ -42,7 +42,8 @@ The implemented vertical-slice foundation includes:
 
 Creating an application record does not mutate Playbook, PlaybookRevision, EvolutionProposal, or
 PlaybookRevisionActivation records. It does not change proposal status, apply a proposal, or
-perform automatic evolution.
+perform automatic evolution. It is not Playbook execution and has no relation to PlaybookRun;
+`content_changed=False` cannot establish revision-specific execution provenance.
 
 There is currently:
 

@@ -115,6 +115,38 @@ multiple distinct actions, and mutates no related record. PlaybookRun and Playbo
 `show()` owns explicit action-not-found behavior. The service creates no Outcome, Review, or
 learning record.
 
+## Playbook-scoped Knowledge use and feedback ownership
+
+`PlaybookService.add()` requires at least one exact Knowledge UUID and validates every supplied
+Knowledge relation before saving the caller-defined Playbook. `PlaybookRunService.add()` validates
+the exact Playbook and records the caller's declaration that it was manually or externally
+applied. `PlaybookEvaluationService.add()` validates and evaluates one exact Run.
+
+`EvolutionProposalService.add()` persists the target `playbook_id` and exact `evaluation_ids`.
+Before saving, it loads every Evaluation and its Run and rejects any Run whose `playbook_id` does
+not equal the target Playbook. This preserves:
+
+```text
+PlaybookEvaluation.run_id
+→ PlaybookRun.playbook_id
+→ Playbook.knowledge_ids
+→ Knowledge.id
+```
+
+`DecisionActionService.add()` validates an optional exact PlaybookRun relation.
+`DecisionOutcomeService.add()` validates exact DecisionAction IDs, enabling the optional path:
+
+```text
+DecisionOutcome.action_ids
+→ DecisionAction.playbook_run_id?
+→ PlaybookRun.playbook_id
+→ Playbook.knowledge_ids
+```
+
+Neither service attributes an outcome to one Knowledge item. No service persists retrieval or
+recommendation events, identifies a PlaybookRevision on a Run, infers use, or performs automatic
+learning or evolution.
+
 ## Decision outcome and lifecycle ownership
 
 `DecisionOutcomeService.add()` validates the Decision, matching acceptance, one or more unique

@@ -21,8 +21,14 @@ A Playbook defines an executable or operationalized procedure derived from knowl
 ## Invariants
 
 - A playbook is distinct from a run.
+- `knowledge_ids` contains the exact Knowledge UUIDs selected by the caller.
+- `PlaybookService.add()` requires at least one Knowledge ID and validates every referenced
+  Knowledge item before persistence.
 - Revision navigation is owned by `PlaybookRevisionService`.
 - Persistence concerns remain outside the domain object.
+
+Knowledge selection is explicit. It is not durable retrieval history, a recommendation event,
+execution, evaluation, or proof that any individual Knowledge item caused an outcome.
 
 ## Typical transitions
 

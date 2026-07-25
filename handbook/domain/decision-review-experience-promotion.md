@@ -142,5 +142,7 @@ Promotion changes no canonical Decision lifecycle state and adds no `reviewed`, 
 revision, evidence execution, automatic learning, or Consigliere work. `DecisionReview.assessment`,
 `DecisionOutcome.result`, and `Experience.result` remain distinct meanings. A later explicit
 Knowledge generalization uses the existing generic Knowledge commands and validated Experience
-reader boundary; `neural experience knowledge` remains read-only navigation. Durable Knowledge use
-and feedback remain separate future work.
+reader boundary; `neural experience knowledge` remains read-only navigation. Durable
+Playbook-scoped Knowledge use and Run feedback already exist. Knowledge-specific causal
+attribution, durable retrieval or recommendation events, revision-specific execution provenance,
+and demonstrated improvement remain unsupported.
