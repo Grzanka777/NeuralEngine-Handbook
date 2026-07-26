@@ -34,6 +34,8 @@ Confirmed example:
   derivation through `get_active_revision_for_playbook(playbook_id)`.
 - `PlaybookRevisionApplicationService` owns application-record navigation and delegates active
   revision resolution to `PlaybookRevisionActivationService`.
+- `PlaybookRunService` owns optional explicit Run-to-Revision validation and reverse
+  `list_for_revision(UUID)` navigation without consulting activation or application state.
 - Repository interfaces remain persistence-focused.
 - `PlaybookService` should not gain unrelated persistence dependencies.
 

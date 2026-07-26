@@ -93,3 +93,12 @@ provenance. No promotion adapter, repository, path, or Brain directory exists.
 integrity is enforced by application composition through `ExperienceReader` and
 `ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
 format, migration, relation index, second write, or repair-on-read behavior was added.
+
+## PlaybookRun adapter compatibility
+
+`JsonPlaybookRunRepository` persists the optional `revision_id` through the existing Pydantic
+model serialization and keeps its `save()`, sorted `load_all()`, and `get_by_id()` operations.
+Old JSON without `revision_id` loads with `None` and makes no revision-specific claim; malformed
+UUID data is rejected by domain validation. There is no migration, backfill, inferred value,
+relation query, or adapter-owned ownership check. Revision existence and same-Playbook integrity
+belong to `PlaybookRunService`.

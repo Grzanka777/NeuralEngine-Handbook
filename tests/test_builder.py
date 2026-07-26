@@ -79,7 +79,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Durable Playbook-scoped Knowledge use and Run feedback already exist" in skill
     assert "PlaybookEvaluation.run_id" in skill
     assert "DecisionAction.playbook_run_id?" in skill
-    assert "Run identifies a Playbook, not a PlaybookRevision" in skill
+    assert "PlaybookRun -> zero or one PlaybookRevision" in skill
     assert (
         "durable operational Knowledge use and feedback remain a separate future gap" not in skill
     )
@@ -92,6 +92,34 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "different key + Decision already accepted" in skill
     assert "There is no Evidence repository, service, or CLI" in skill
     assert "Do not add features" in skill
+
+
+def test_generated_outputs_preserve_run_revision_execution_provenance(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "PlaybookRun -> zero or one PlaybookRevision" in artifact
+        assert "authority -> explicit Run caller" in artifact
+        assert "revision_id=None" in artifact
+        assert "Corrupt linked provenance fails closed" in artifact
+        assert "neural run add --revision-id REVISION_UUID" in artifact
+        assert "neural revision runs REVISION_UUID" in artifact
+        assert "Run-to-PlaybookRevisionApplication binding" in artifact
+        assert "automatic active-revision selection" in artifact
+        assert "Run identifies a Playbook, not a PlaybookRevision" not in artifact
+
+    assert "PlaybookRunReader.get_by_id()" in application
+    assert "No failure path writes" in application
+    assert "Old JSON without `revision_id` loads with `None`" in application
 
 
 def test_handbook_contains_all_domain_entities(tmp_path: Path) -> None:
@@ -155,7 +183,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `1b45beb9b595b650a48ad00ba3ea38f7eebd02b6`" in handbook
+    assert "NeuralEngine source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b`" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook

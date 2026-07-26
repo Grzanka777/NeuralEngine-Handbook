@@ -62,6 +62,12 @@ KnowledgeService does not use `ExperienceRepository` directly; its separate appl
 `ExperienceService`. No Knowledge/Experience relation query or promotion-integrity method is added
 to either repository port.
 
+`PlaybookRunRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Optional revision validation, complete and scoped read integrity, and revision-to-Runs filtering
+belong to `PlaybookRunService`. The separate application-facing `PlaybookRunReader` exposes its
+validated `get_by_id()` behavior to downstream services. No revision-specific repository query
+method was added.
+
 ## Repository return types
 
 Prefer:

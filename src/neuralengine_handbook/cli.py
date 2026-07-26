@@ -15,7 +15,7 @@ def build_all(
         exists=True,
         file_okay=False,
         dir_okay=True,
-    )
+    ),
 ) -> None:
     """Generate all handbook outputs."""
     outputs = build(root.resolve())
@@ -32,7 +32,7 @@ def build_command(
         exists=True,
         file_okay=False,
         dir_okay=True,
-    )
+    ),
 ) -> None:
     """Generate all handbook outputs."""
     outputs = build(root.resolve())

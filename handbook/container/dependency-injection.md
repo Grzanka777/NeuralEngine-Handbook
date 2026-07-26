@@ -61,7 +61,17 @@ The acceptance foundation is wired through `Container.decision_acceptance_reposi
 
 The action foundation is wired through `Container.decision_action_repository()` and
 `Container.decision_action_service()`. The action service receives JSON action, Decision,
-acceptance, and PlaybookRun repositories.
+and acceptance repositories plus `PlaybookRunService` as the validated `PlaybookRunReader`.
+
+`Container.playbook_run_service()` injects `JsonPlaybookRunRepository`,
+`JsonPlaybookRepository`, and `JsonPlaybookRevisionRepository`. It deliberately receives no
+activation service or revision-application repository: Run revision provenance is explicit caller
+input, not lifecycle-derived state.
+
+`Container.playbook_evaluation_service()` and `Container.evolution_proposal_service()` also
+receive a constructed `PlaybookRunService` rather than a raw Run repository. Revision-linked
+corruption therefore fails closed for Evaluation, Proposal, and DecisionAction Run reads while the
+dependency graph remains acyclic.
 
 The outcome foundation is wired through `Container.decision_outcome_repository()` and
 `Container.decision_outcome_service()`. The outcome service receives JSON outcome, Decision,

@@ -57,4 +57,6 @@ major NeuralEngine milestone
 ```
 
 Each repository change is separate and reviewable. Generated outputs are rebuilt from Handbook
-sources and are never edited manually.
+sources and are never edited manually. Publishing the generated skill back to NeuralEngine is a
+later separate repository task; a Handbook synchronization task must not perform that publication
+unless it is explicitly included in scope.

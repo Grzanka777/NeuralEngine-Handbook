@@ -24,7 +24,10 @@ An EvolutionProposal expresses a controlled suggestion for changing a playbook b
 - Proposal provenance is preserved.
 - At least one Evaluation ID is required.
 - `EvolutionProposalService` verifies that every referenced Evaluation exists and that its Run
-  belongs to the target Playbook.
+  belongs to the target Playbook through the validated Run reader.
+- Exact `evaluation_ids → PlaybookEvaluation.run_id → PlaybookRun.revision_id?` relations preserve
+  optional revision provenance transitively; EvolutionProposal does not store a revision ID
+  directly.
 - Proposal and applied revision are distinct concepts.
 - Public behavior changes require architectural review.
 

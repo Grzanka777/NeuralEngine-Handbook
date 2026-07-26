@@ -96,7 +96,7 @@ improvement. Durable Playbook-scoped use and Run feedback exist through:
 
 ```text
 PlaybookEvaluation.run_id
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 → Knowledge.id
 ```
@@ -104,7 +104,9 @@ PlaybookEvaluation.run_id
 This is feedback on the Playbook and its declared Knowledge set. It does not prove one Knowledge
 item caused an outcome, attribute contributions within a multi-Knowledge Playbook, or demonstrate
 causal or comparative improvement. Durable retrieval history, recommendation events, and
-revision-specific Run provenance are not recorded.
+per-Knowledge contribution provenance are not recorded. Optional revision-specific Run provenance
+is recorded only when the Run caller supplies an exact `revision_id`; downstream exact Run
+relations preserve it transitively without attributing effects to one Knowledge item.
 
 Read validation performs one validated Experience read per stored relation, including duplicates.
 The resulting linear read amplification is an intentional fail-closed trade-off; this milestone

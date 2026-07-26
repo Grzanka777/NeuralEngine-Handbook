@@ -116,8 +116,26 @@ learning record.
 ## Playbook-scoped Knowledge use and feedback ownership
 
 `PlaybookService.add()` requires at least one exact Knowledge UUID and validates every supplied
-Knowledge relation before saving the caller-defined Playbook. `PlaybookRunService.add()` validates
-the exact Playbook and records the caller's declaration that it was manually or externally
+Knowledge relation before saving the caller-defined Playbook.
+
+`PlaybookRunService.add()` validates and records the caller's declaration that the exact Playbook
+was manually or externally applied and may accept one explicit `revision_id`. Its write order is:
+
+1. require actions;
+2. require the base Playbook;
+3. require a supplied revision to exist;
+4. require that revision to belong to the same Playbook;
+5. construct and save the Run.
+
+No failure path writes. Omission performs no revision lookup and makes no revision-specific claim.
+`get_by_id()`, the complete and Playbook-scoped lists, and `list_for_revision()` validate linked
+revision existence and same-Playbook ownership. Corrupt linked provenance fails closed; legacy
+Runs remain valid. Revision navigation validates its source revision, filters explicit matches in
+repository order, and validates every result.
+
+The caller is the sole authority for the optional factual relation. The service never consults or
+infers from active revision, activation history, timestamps, repository order,
+`PlaybookRevisionApplication`, or application-intent records. A revision need not be active or
 applied. `PlaybookEvaluationService.add()` validates and evaluates one exact Run.
 
 `EvolutionProposalService.add()` persists the target `playbook_id` and exact `evaluation_ids`.
@@ -126,7 +144,7 @@ not equal the target Playbook. This preserves:
 
 ```text
 PlaybookEvaluation.run_id
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 → Knowledge.id
 ```
@@ -137,13 +155,15 @@ PlaybookEvaluation.run_id
 ```text
 DecisionOutcome.action_ids
 → DecisionAction.playbook_run_id?
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 ```
 
-Neither service attributes an outcome to one Knowledge item. No service persists retrieval or
-recommendation events, identifies a PlaybookRevision on a Run, infers use, or performs automatic
-learning or evolution.
+`PlaybookEvaluationService`, `EvolutionProposalService`, and `DecisionActionService` consume the
+narrow validated `PlaybookRunReader.get_by_id()` boundary. Their schemas do not store a revision
+ID directly; existing exact Run relations preserve optional revision provenance transitively.
+No service attributes an outcome to one Knowledge item, persists retrieval or recommendation
+events, infers provenance, or performs automatic learning or evolution.
 
 ## Decision outcome and lifecycle ownership
 

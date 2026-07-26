@@ -63,7 +63,9 @@ major NeuralEngine milestone
 ```
 
 Each repository change is separate and reviewable. Generated outputs are rebuilt from Handbook
-sources and are never edited manually.
+sources and are never edited manually. Publishing the generated skill back to NeuralEngine is a
+later separate repository task; a Handbook synchronization task must not perform that publication
+unless it is explicitly included in scope.
 
 ## Architecture
 
@@ -137,7 +139,7 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `ebab369f24385494da5906f523368d81eb08d639` preserves the separate immutable
+Source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b` preserves the separate immutable
 `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
 records, persistence-focused ports and JSON adapters, application services, container wiring,
 thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
@@ -188,23 +190,37 @@ later use or improvement.
 Durable Playbook-scoped Knowledge use and Run feedback already exist:
 
 ```text
+PlaybookRun -> zero or one PlaybookRevision
+PlaybookRevision -> zero or many PlaybookRuns
+authority -> explicit Run caller
+```
+
+Run write validation requires actions, then the base Playbook, then a supplied revision, then
+same-Playbook revision ownership; only then may one Run be saved. `get_by_id()`, complete lists,
+Playbook-scoped lists, and revision-scoped lists validate linked revision existence and ownership.
+Corrupt linked provenance fails closed, while old Run JSON without `revision_id` loads as `None`
+without migration, backfill, or inference.
+
+```text
 Knowledge
 → Playbook.knowledge_ids
-→ PlaybookRun.playbook_id
+→ PlaybookRun(playbook_id, revision_id?)
 → PlaybookEvaluation.run_id
 → EvolutionProposal(playbook_id, evaluation_ids)
 ```
 
 The caller explicitly selects exact Knowledge UUIDs into a Playbook, declares that the Playbook
-was manually or externally applied by recording a Run, evaluates that exact Run, and may create an
-EvolutionProposal from exact Evaluation IDs. `EvolutionProposalService` verifies that every
-referenced Evaluation's Run belongs to the target Playbook.
+was manually or externally applied by recording a Run, and may additionally declare zero or one
+exact immutable PlaybookRevision whose content was used. The Run caller is the authority for that
+optional declaration. The caller then evaluates that exact Run and may create an EvolutionProposal
+from exact Evaluation IDs. `EvolutionProposalService` verifies that every referenced Evaluation's
+Run belongs to the target Playbook.
 
 The exact persisted feedback path is:
 
 ```text
 PlaybookEvaluation.run_id
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 → Knowledge.id
 ```
@@ -214,7 +230,7 @@ Decision learning provides an optional persisted bridge:
 ```text
 DecisionOutcome.action_ids
 → DecisionAction.playbook_run_id?
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 ```
 
@@ -222,14 +238,19 @@ The bridge is optional because `DecisionAction.playbook_run_id` is optional. A D
 references exact DecisionAction IDs, but an action without a Run relation supplies no Playbook or
 Knowledge-use provenance.
 
-These relations provide feedback at Playbook and declared Knowledge-set scope. They do not record
-durable retrieval history or recommendation events, prove that one Knowledge item caused an
-outcome, attribute contributions within a multi-Knowledge Playbook, or demonstrate causal or
-comparative improvement. A Run identifies a Playbook, not a PlaybookRevision.
-`PlaybookRevisionApplication` is application intent and audit with `content_changed=False`, not
-execution. Use is never inferred from co-existence, timestamps, tags, text similarity, or
-repository order. Selection, Run recording, Evaluation, Proposal creation, and decision linkage
-remain explicit caller actions; none triggers automatic learning, mutation, or evolution.
+These relations provide feedback at Playbook and declared Knowledge-set scope and preserve an
+explicit Run revision relation transitively. Evaluation, EvolutionProposal, and DecisionAction do
+not store a revision ID directly. The relations do not record durable retrieval history or
+recommendation events, prove that one Knowledge item caused an outcome, attribute contributions
+within a multi-Knowledge Playbook, or demonstrate causal or comparative improvement.
+
+Revision provenance is never inferred from current active revision, activation history,
+repository order, timestamps, `PlaybookRevisionApplication`, or application-intent records. A
+revision need not be active or applied for the caller to truthfully declare that its content was
+used. `revision_id=None` covers base Playbook execution, legacy records, and unknown revision
+provenance and makes no revision-specific claim. Selection, Run recording, Evaluation, Proposal
+creation, and decision linkage remain explicit caller actions; none triggers automatic learning,
+mutation, materialization, activation, application, or evolution.
 
 ## Agent policy
 

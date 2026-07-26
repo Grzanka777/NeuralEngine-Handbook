@@ -2,6 +2,11 @@
 
 NeuralEngine Handbook is the single source of truth for engineering rules, AI-agent policy, architecture constraints, review requirements, and generated project artifacts.
 
+The current source synchronization checkpoint is NeuralEngine commit
+`18788adacf75ff7f11d0dd6f28e5da8cf143081b`. It includes explicit optional
+PlaybookRun-to-PlaybookRevision execution provenance: the Run caller may declare one exact
+immutable revision, while omission makes no revision-specific claim.
+
 ## What it generates
 
 ```bash

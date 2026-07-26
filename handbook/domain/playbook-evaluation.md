@@ -24,10 +24,11 @@ A PlaybookEvaluation records the assessment of a completed or assessable playboo
 - Evaluation semantics are explicit.
 - Evaluation does not silently mutate a playbook.
 
-Through `PlaybookEvaluation.run_id → PlaybookRun.playbook_id →
+Through `PlaybookEvaluation.run_id → PlaybookRun(revision_id?, playbook_id) →
 Playbook.knowledge_ids`, an Evaluation provides durable feedback at Playbook and declared
-Knowledge-set scope. It does not attribute an outcome to one Knowledge item or prove causal or
-comparative improvement.
+Knowledge-set scope and preserves explicit optional revision provenance transitively. The
+Evaluation schema does not store a revision ID directly. It does not attribute an outcome to one
+Knowledge item or prove causal or comparative improvement.
 
 ## Typical transitions
 

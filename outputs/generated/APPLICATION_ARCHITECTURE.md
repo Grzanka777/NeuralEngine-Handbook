@@ -118,8 +118,26 @@ learning record.
 ## Playbook-scoped Knowledge use and feedback ownership
 
 `PlaybookService.add()` requires at least one exact Knowledge UUID and validates every supplied
-Knowledge relation before saving the caller-defined Playbook. `PlaybookRunService.add()` validates
-the exact Playbook and records the caller's declaration that it was manually or externally
+Knowledge relation before saving the caller-defined Playbook.
+
+`PlaybookRunService.add()` validates and records the caller's declaration that the exact Playbook
+was manually or externally applied and may accept one explicit `revision_id`. Its write order is:
+
+1. require actions;
+2. require the base Playbook;
+3. require a supplied revision to exist;
+4. require that revision to belong to the same Playbook;
+5. construct and save the Run.
+
+No failure path writes. Omission performs no revision lookup and makes no revision-specific claim.
+`get_by_id()`, the complete and Playbook-scoped lists, and `list_for_revision()` validate linked
+revision existence and same-Playbook ownership. Corrupt linked provenance fails closed; legacy
+Runs remain valid. Revision navigation validates its source revision, filters explicit matches in
+repository order, and validates every result.
+
+The caller is the sole authority for the optional factual relation. The service never consults or
+infers from active revision, activation history, timestamps, repository order,
+`PlaybookRevisionApplication`, or application-intent records. A revision need not be active or
 applied. `PlaybookEvaluationService.add()` validates and evaluates one exact Run.
 
 `EvolutionProposalService.add()` persists the target `playbook_id` and exact `evaluation_ids`.
@@ -128,7 +146,7 @@ not equal the target Playbook. This preserves:
 
 ```text
 PlaybookEvaluation.run_id
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 → Knowledge.id
 ```
@@ -139,13 +157,15 @@ PlaybookEvaluation.run_id
 ```text
 DecisionOutcome.action_ids
 → DecisionAction.playbook_run_id?
-→ PlaybookRun.playbook_id
+→ PlaybookRun(revision_id?, playbook_id)
 → Playbook.knowledge_ids
 ```
 
-Neither service attributes an outcome to one Knowledge item. No service persists retrieval or
-recommendation events, identifies a PlaybookRevision on a Run, infers use, or performs automatic
-learning or evolution.
+`PlaybookEvaluationService`, `EvolutionProposalService`, and `DecisionActionService` consume the
+narrow validated `PlaybookRunReader.get_by_id()` boundary. Their schemas do not store a revision
+ID directly; existing exact Run relations preserve optional revision provenance transitively.
+No service attributes an outcome to one Knowledge item, persists retrieval or recommendation
+events, infers provenance, or performs automatic learning or evolution.
 
 ## Decision outcome and lifecycle ownership
 
@@ -370,6 +390,19 @@ get_by_id(experience_id)
 from depending on the broader raw `ExperienceRepository` surface or duplicating promoted
 Experience validation. No repository port changed for this boundary.
 
+## Validated PlaybookRun reader boundary
+
+`PlaybookRunReader` is defined beside `PlaybookRunService` and exposes only:
+
+```text
+get_by_id(run_id)
+```
+
+`PlaybookRunService` satisfies it structurally and remains the canonical owner of persisted
+Run-to-Revision integrity validation. PlaybookEvaluation, EvolutionProposal, and DecisionAction
+services use this boundary instead of a raw `PlaybookRunRepository`, so revision-linked corruption
+fails closed without expanding the persistence port.
+
 ---
 
 # Repository Ports
@@ -435,6 +468,12 @@ KnowledgeService does not use `ExperienceRepository` directly; its separate appl
 `ExperienceReader` exposes only validated `get_by_id()` behavior implemented by
 `ExperienceService`. No Knowledge/Experience relation query or promotion-integrity method is added
 to either repository port.
+
+`PlaybookRunRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Optional revision validation, complete and scoped read integrity, and revision-to-Runs filtering
+belong to `PlaybookRunService`. The separate application-facing `PlaybookRunReader` exposes its
+validated `get_by_id()` behavior to downstream services. No revision-specific repository query
+method was added.
 
 ## Repository return types
 
@@ -599,6 +638,15 @@ integrity is enforced by application composition through `ExperienceReader` and
 `ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
 format, migration, relation index, second write, or repair-on-read behavior was added.
 
+## PlaybookRun adapter compatibility
+
+`JsonPlaybookRunRepository` persists the optional `revision_id` through the existing Pydantic
+model serialization and keeps its `save()`, sorted `load_all()`, and `get_by_id()` operations.
+Old JSON without `revision_id` loads with `None` and makes no revision-specific claim; malformed
+UUID data is rejected by domain validation. There is no migration, backfill, inferred value,
+relation query, or adapter-owned ownership check. Revision existence and same-Playbook integrity
+belong to `PlaybookRunService`.
+
 ---
 
 # Dependency Injection and Container
@@ -664,7 +712,17 @@ The acceptance foundation is wired through `Container.decision_acceptance_reposi
 
 The action foundation is wired through `Container.decision_action_repository()` and
 `Container.decision_action_service()`. The action service receives JSON action, Decision,
-acceptance, and PlaybookRun repositories.
+and acceptance repositories plus `PlaybookRunService` as the validated `PlaybookRunReader`.
+
+`Container.playbook_run_service()` injects `JsonPlaybookRunRepository`,
+`JsonPlaybookRepository`, and `JsonPlaybookRevisionRepository`. It deliberately receives no
+activation service or revision-application repository: Run revision provenance is explicit caller
+input, not lifecycle-derived state.
+
+`Container.playbook_evaluation_service()` and `Container.evolution_proposal_service()` also
+receive a constructed `PlaybookRunService` rather than a raw Run repository. Revision-linked
+corruption therefore fails closed for Evaluation, Proposal, and DecisionAction Run reads while the
+dependency graph remains acyclic.
 
 The outcome foundation is wired through `Container.decision_outcome_repository()` and
 `Container.decision_outcome_service()`. The outcome service receives JSON outcome, Decision,

@@ -144,5 +144,6 @@ revision, evidence execution, automatic learning, or Consigliere work. `Decision
 Knowledge generalization uses the existing generic Knowledge commands and validated Experience
 reader boundary; `neural experience knowledge` remains read-only navigation. Durable
 Playbook-scoped Knowledge use and Run feedback already exist. Knowledge-specific causal
-attribution, durable retrieval or recommendation events, revision-specific execution provenance,
-and demonstrated improvement remain unsupported.
+attribution, durable retrieval or recommendation events, and demonstrated improvement remain
+unsupported. Optional revision-specific Run provenance exists only as an explicit caller-supplied
+Run relation and remains transitive through exact downstream Run IDs.

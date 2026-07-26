@@ -15,6 +15,10 @@ Activation does not imply application. It does not materialize revision content 
 mutate a Playbook or PlaybookRevision, change EvolutionProposal status, apply a proposal, or
 perform automatic evolution.
 
+Activation also does not imply execution. PlaybookRun revision provenance is supplied explicitly
+by the Run caller and is never selected from current or historical activation state. A revision
+does not need to be active for a caller to declare truthfully that its content was used.
+
 ## Application ownership
 
 `PlaybookRevisionActivationService` owns read-only lifecycle navigation by Playbook,
@@ -39,8 +43,12 @@ Read-only lifecycle inspection exists through:
 neural playbook revision-history PLAYBOOK_UUID
 neural playbook active-revision PLAYBOOK_UUID
 neural revision activation-history REVISION_UUID
+neural revision runs REVISION_UUID
 neural proposal activation-history PROPOSAL_UUID
 ```
+
+`neural revision runs` is execution-provenance navigation through `PlaybookRunService`; unlike the
+other commands in this list, it does not inspect lifecycle records.
 
 Explicit lifecycle decisions can be recorded through:
 

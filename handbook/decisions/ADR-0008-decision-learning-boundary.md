@@ -68,7 +68,14 @@ advisory layer rather than authoritative storage.
 - Source commit `ebab369f24385494da5906f523368d81eb08d639` documents the implemented
   Playbook-scoped contract from exact `Playbook.knowledge_ids` through Run, Evaluation, and
   Proposal relations, plus the optional DecisionAction/DecisionOutcome bridge.
+- Source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b` adds zero-or-one explicit
+  caller-supplied `PlaybookRun.revision_id`, validated writes and fail-closed linked reads,
+  revision-to-Runs navigation, and validated downstream Run-reader composition.
 - Storing Knowledge alone proves durable capture, not later use or improvement. Playbook-scoped
   Knowledge use and Run feedback exist, while Knowledge-specific causality, durable retrieval or
-  recommendation events, revision-specific execution provenance, and demonstrated improvement
-  remain unsupported.
+  recommendation events, and demonstrated improvement remain unsupported. Revision-specific
+  execution provenance exists only when a Run caller supplies one exact same-Playbook revision;
+  it is never inferred from activation or application state.
+- PlaybookEvaluation, EvolutionProposal, and DecisionAction preserve optional revision provenance
+  transitively through exact Run relations and do not store a revision ID directly.
+- Old Run JSON without `revision_id` remains valid without migration, backfill, or inference.
