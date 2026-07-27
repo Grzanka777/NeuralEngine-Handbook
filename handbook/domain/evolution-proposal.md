@@ -27,7 +27,9 @@ An EvolutionProposal expresses a controlled suggestion for changing a playbook b
   belongs to the target Playbook through the validated Run reader.
 - Exact `evaluation_ids → PlaybookEvaluation.run_id → PlaybookRun.revision_id?` relations preserve
   optional revision provenance transitively; EvolutionProposal does not store a revision ID
-  directly.
+  directly. Under supported create-once Revision writes, a present transitive UUID retains stable
+  payload meaning going forward; the Proposal stores no Revision payload snapshot and proves no
+  pre-hardening history.
 - Proposal and applied revision are distinct concepts.
 - Public behavior changes require architectural review.
 

@@ -194,6 +194,29 @@ record snapshots Knowledge. Direct filesystem mutation remains out-of-band corru
 contract is not tamper-proof storage, cryptographic immutability, Knowledge versioning,
 historical reconstruction, payload snapshotting, or hash-based integrity.
 
+Source commit `49db077c00e67c1d3b5f25ec92b46c83518a30bb` adds the corresponding
+create-once persistence contract for `PlaybookRevision`. Under supported repository operations,
+one Revision UUID binds to one complete validated modeled payload. Complete equality covers every
+modeled field and ordered collection: `id`, `timestamp`, `playbook_id`, `proposal_id`, `title`,
+`situation`, `objective`, ordered `steps`, ordered `success_criteria`, ordered `knowledge_ids`,
+`notes`, and ordered `tags`.
+
+`JsonPlaybookRevisionRepository` validates the candidate and publishes a same-directory temporary
+file through a non-replacing operation. An absent UUID path is created once. An identical complete
+same-ID replay succeeds without rewriting the existing bytes; any different same-ID payload
+raises `PlaybookRevisionPersistenceConflictError` without overwrite. Malformed or invalid stored
+data raises `PlaybookRevisionStoredDataError`. A filename or requested UUID that differs from the
+embedded payload UUID raises `PlaybookRevisionIdentityMismatchError`. `load_all()` also validates
+filename UUID syntax and embedded identity, while a missing `get_by_id()` still returns `None`.
+Valid old JSON remains readable without migration.
+
+This gives exact Revision UUID relations stable payload meaning going forward under supported
+repository operations. It does not deeply freeze nested in-memory lists, prove pre-hardening
+payload history, snapshot Revision content into Run or related records, add versioning,
+supersession, hashes, content-addressed IDs, migration, backfill, repair, backup/restore, or
+filesystem tamper evidence. Direct filesystem mutation remains out-of-band corruption; the
+contract is not tamper-proof or cryptographically immutable.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;

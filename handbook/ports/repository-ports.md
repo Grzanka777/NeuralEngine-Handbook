@@ -24,6 +24,16 @@ Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
 
+`PlaybookRevisionRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Its `save()` contract is create-once: create an absent Revision UUID without replacement, accept
+an identical complete same-ID replay as a byte-preserving no-op, and reject a different same-ID
+payload as `PlaybookRevisionPersistenceConflictError` without writing.
+`PlaybookRevisionRepositoryError` is the base persistence failure category;
+`PlaybookRevisionStoredDataError` identifies malformed or invalid stored data and non-UUID
+filename stems, while `PlaybookRevisionIdentityMismatchError` identifies filename/request versus
+embedded UUID disagreement. A missing `get_by_id()` returns `None`. Relation filtering and normal
+fresh-ID creation remain application-service responsibilities.
+
 `PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
 `get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
 `PlaybookRevisionApplicationService`; no relation-specific query methods are part of the port.

@@ -26,6 +26,18 @@ Creating a revision does not mutate the Playbook, apply the proposal, activate t
 perform automatic evolution. Activation and application are represented by separate immutable
 records.
 
+A frozen top-level model expresses immutable domain intent but does not deeply freeze nested list
+fields. Under supported repository writes, one Revision UUID binds to one complete validated
+modeled payload. Complete equality includes every modeled scalar and ordered collection. An
+identical same-ID replay preserves existing bytes; any different same-ID payload conflicts without
+overwrite. The same content under a new UUID remains a distinct valid Revision.
+
+Valid old JSON remains readable without migration. The guarantee is prospective: pre-hardening
+payload history cannot be proven retroactively, and direct filesystem mutation remains
+out-of-band corruption. Revision is not tamper-proof, cryptographically immutable, versioned, or
+snapshotted into a Run. No content hash, historical reconstruction, repair, edit, update, delete,
+correction, or supersession lifecycle is added.
+
 A PlaybookRun may independently carry zero or one caller-supplied `revision_id`. A supplied
 relation declares that exact immutable revision content was used; omission makes no
 revision-specific claim. Revision selection, activation, or application intent never supplies or
@@ -43,6 +55,9 @@ provide cryptographic or filesystem tamper evidence.
 to Runs that explicitly declare it.
 
 The repository port remains persistence-focused and should not gain a broad `find_by_playbook_id` method solely to move application navigation into persistence.
+
+`PlaybookRevisionService.add()` remains fresh-ID and non-idempotent. It exposes no replay or
+replacement use case.
 
 ## Invariants
 

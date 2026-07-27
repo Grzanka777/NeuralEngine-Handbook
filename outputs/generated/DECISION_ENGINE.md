@@ -1381,7 +1381,7 @@ because PlaybookRun and Playbook expose no project key. `DecisionOutcome` remain
 Experience. The promotion use case copies selected Review text into optional immutable Experience
 provenance and never mutates a Playbook.
 
-At source commit `0ffdda6bfdbadd5952c1066fddd303185939d643`, the implemented operational path is:
+At source commit `49db077c00e67c1d3b5f25ec92b46c83518a30bb`, the implemented operational path is:
 
 ```text
 Knowledge
@@ -1421,6 +1421,33 @@ It is optional because `playbook_run_id` is optional. `DecisionOutcome` preserve
 through exact DecisionAction IDs, but an action without the Run relation provides no Playbook or
 Knowledge-use provenance.
 
+## PlaybookRevision persistence integrity
+
+At the same checkpoint, supported `PlaybookRevisionRepository.save()` operations are create-once.
+One persisted Revision UUID identifies one complete validated modeled payload. Initial creation is
+non-replacing; an identical complete same-ID replay preserves existing bytes; a different
+same-ID payload conflicts without overwrite. Malformed or invalid stored data and
+filename/request-to-payload UUID mismatches fail visibly without repair. `load_all()` validates
+filename UUID syntax and embedded identity, and missing `get_by_id()` retains `None`.
+
+This is exact modeled equality, including every scalar and ordered collection. It is not semantic
+deduplication: the same content under a new UUID remains a distinct valid Revision. Normal
+`PlaybookRevisionService.add()` continues to create a fresh UUID and is non-idempotent. No update,
+replace, edit, delete, repair, replay, version, or supersession service is introduced.
+
+`PlaybookRun.revision_id` remains optional, explicit, caller-supplied execution provenance. When
+present, it retains stable Revision payload meaning going forward under supported writes.
+Evaluation and EvolutionProposal preserve that identity transitively through their exact Run
+relations; activation and application records preserve it through their exact Revision UUID
+relations. None snapshots the Revision payload. Activation or application state is not required
+to record a truthful Run, and no automatic selection or Run-to-application binding exists.
+
+The guarantee is prospective and limited to supported repository operations. Top-level model
+freezing does not deeply freeze nested lists. Pre-hardening payload history cannot be proven or
+reconstructed. There are no Revision snapshots, hashes, digests, content-addressed IDs, versions,
+migration, backfill, repair, backup/restore, direct-filesystem protection, tamper evidence, or
+cryptographic immutability.
+
 ## Self-observation and Consigliere boundaries
 
 The future dogfooding flow remains a design direction:
@@ -1446,7 +1473,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `0ffdda6` does not implement:
+Commit `49db077` does not implement:
 
 ```text
 execution engine
@@ -1468,6 +1495,12 @@ Knowledge supersession or revision/version lifecycle
 content-addressed Knowledge IDs or content hashes
 Knowledge payload snapshots or historical reconstruction
 filesystem tamper evidence or automatic repair
+PlaybookRevision edit/update/delete
+PlaybookRevision correction/supersession/version lifecycle
+PlaybookRevision payload snapshots or historical reconstruction
+PlaybookRevision content hashes, digests, or content-addressed IDs
+PlaybookRevision migration, backfill, repair, or backup/restore
+deep PlaybookRevision collection immutability
 special DecisionReview-to-Knowledge promotion
 durable Knowledge retrieval history
 durable recommendation events

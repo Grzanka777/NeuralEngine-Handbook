@@ -28,7 +28,9 @@ Through `PlaybookEvaluation.run_id â†’ PlaybookRun(revision_id?, playbook_id) â†
 Playbook.knowledge_ids`, an Evaluation provides durable feedback at Playbook and declared
 Knowledge-set scope and preserves explicit optional revision provenance transitively. The
 Evaluation schema does not store a revision ID directly. It does not attribute an outcome to one
-Knowledge item or prove causal or comparative improvement.
+Knowledge item or prove causal or comparative improvement. Under supported create-once Revision
+writes, the transitive Revision UUID retains stable payload meaning going forward; Evaluation
+does not snapshot that payload or prove pre-hardening history.
 
 ## Typical transitions
 

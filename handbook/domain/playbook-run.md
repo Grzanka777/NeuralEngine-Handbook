@@ -27,6 +27,8 @@ externally applied to a concrete situation. NeuralEngine does not execute Playbo
   referenced by zero or many Runs.
 - The Run caller is the authority for `revision_id`. A supplied UUID declares that exact immutable
   revision content was used.
+- Under supported create-once Revision repository operations, that UUID retains stable complete
+  Revision payload meaning going forward. Run does not snapshot the Revision payload.
 - `revision_id=None` makes no revision-specific execution claim. It covers base Playbook
   execution, legacy records, or unknown revision provenance.
 - Write validation requires actions first, then the base Playbook, then a supplied revision, then
@@ -36,6 +38,8 @@ externally applied to a concrete situation. NeuralEngine does not execute Playbo
 - Revision provenance is never inferred from active-revision state, activation history,
   repository order, timestamps, `PlaybookRevisionApplication`, or application-intent records.
 - A declared revision need not be active or applied.
+- No retroactive guarantee is made for Revision payload history recorded before the create-once
+  hardening.
 - Runtime state must not mutate the playbook definition.
 - Evaluation is modeled separately.
 

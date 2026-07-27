@@ -33,6 +33,27 @@ Repository adapters require tests for:
 `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
 identity lookup operations; relation filtering remains in the application layer.
 
+## PlaybookRevision adapter create-once integrity
+
+`JsonPlaybookRevisionRepository` still stores one JSON file per Revision under
+`NeuralPaths.PLAYBOOK_REVISIONS`, with no schema, path, or repository-method change. It serializes
+and validates the complete candidate, writes and fsyncs a same-directory temporary file, and uses
+a non-replacing local filesystem publication operation so a supported save cannot replace an
+existing UUID path.
+
+An identical complete same-ID replay compares as the validated model and succeeds without
+rewriting existing bytes. Any different modeled field raises
+`PlaybookRevisionPersistenceConflictError` without write. Malformed or invalid stored data raises
+`PlaybookRevisionStoredDataError`; requested or filename UUID disagreement with embedded
+`PlaybookRevision.id` raises `PlaybookRevisionIdentityMismatchError`. `load_all()` validates UUID
+filename syntax and embedded identity. Integrity failures are not repaired, overwritten, skipped,
+or substituted, while a missing `get_by_id()` returns `None`.
+
+Valid old JSON remains readable without migration or backfill. Direct filesystem mutation remains
+out-of-band corruption. The adapter adds no deep in-memory collection immutability, tamper-proof
+or cryptographic storage, hashes, content-addressed IDs, versions, snapshots, historical
+reconstruction, repair, or backup/restore workflow.
+
 ## Decision adapter
 
 `JsonDecisionRepository` implements `DecisionRepository` and stores one JSON file per Decision

@@ -341,6 +341,43 @@ def test_generated_outputs_preserve_knowledge_create_once_integrity(
     assert "no schema, path, or repository-method change" in application
 
 
+def test_generated_outputs_preserve_playbook_revision_create_once_integrity(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "one Revision UUID binds to one complete validated modeled payload" in artifact
+        assert "identical complete same-ID replay" in artifact
+        assert "without rewriting the existing bytes" in artifact
+        assert "PlaybookRevisionPersistenceConflictError" in artifact
+        assert "PlaybookRevisionIdentityMismatchError" in artifact
+        assert "Direct filesystem mutation remains out-of-band corruption" in artifact
+        assert "not tamper-proof or cryptographically immutable" in artifact
+        assert "pre-hardening" in artifact
+        assert "payload history" in artifact
+        assert "does not deeply freeze nested in-memory lists" in artifact
+        assert "None snapshots the Revision payload" in artifact
+
+    assert "same content under a new UUID remains a distinct valid Revision" in handbook
+    assert "`PlaybookRevisionService.add()` continues to create a fresh UUID" in handbook
+    assert "Activation or application state" in handbook
+    assert "not required" in handbook
+    assert "missing `get_by_id()` still returns `None`" in handbook
+
+    assert "The `PlaybookRevisionRepository` port owns create-once persistence" in application
+    assert "PlaybookRevisionRepositoryError" in application
+    assert "non-replacing local filesystem publication operation" in application
+    assert "no command, option, or normal success output changed" in application
+
+
 def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(
     tmp_path: Path,
 ) -> None:

@@ -158,6 +158,29 @@ record snapshots Knowledge. Direct filesystem mutation remains out-of-band corru
 contract is not tamper-proof storage, cryptographic immutability, Knowledge versioning,
 historical reconstruction, payload snapshotting, or hash-based integrity.
 
+Source commit `49db077c00e67c1d3b5f25ec92b46c83518a30bb` adds the corresponding
+create-once persistence contract for `PlaybookRevision`. Under supported repository operations,
+one Revision UUID binds to one complete validated modeled payload. Complete equality covers every
+modeled field and ordered collection: `id`, `timestamp`, `playbook_id`, `proposal_id`, `title`,
+`situation`, `objective`, ordered `steps`, ordered `success_criteria`, ordered `knowledge_ids`,
+`notes`, and ordered `tags`.
+
+`JsonPlaybookRevisionRepository` validates the candidate and publishes a same-directory temporary
+file through a non-replacing operation. An absent UUID path is created once. An identical complete
+same-ID replay succeeds without rewriting the existing bytes; any different same-ID payload
+raises `PlaybookRevisionPersistenceConflictError` without overwrite. Malformed or invalid stored
+data raises `PlaybookRevisionStoredDataError`. A filename or requested UUID that differs from the
+embedded payload UUID raises `PlaybookRevisionIdentityMismatchError`. `load_all()` also validates
+filename UUID syntax and embedded identity, while a missing `get_by_id()` still returns `None`.
+Valid old JSON remains readable without migration.
+
+This gives exact Revision UUID relations stable payload meaning going forward under supported
+repository operations. It does not deeply freeze nested in-memory lists, prove pre-hardening
+payload history, snapshot Revision content into Run or related records, add versioning,
+supersession, hashes, content-addressed IDs, migration, backfill, repair, backup/restore, or
+filesystem tamper evidence. Direct filesystem mutation remains out-of-band corruption; the
+contract is not tamper-proof or cryptographically immutable.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
@@ -1519,7 +1542,7 @@ because PlaybookRun and Playbook expose no project key. `DecisionOutcome` remain
 Experience. The promotion use case copies selected Review text into optional immutable Experience
 provenance and never mutates a Playbook.
 
-At source commit `0ffdda6bfdbadd5952c1066fddd303185939d643`, the implemented operational path is:
+At source commit `49db077c00e67c1d3b5f25ec92b46c83518a30bb`, the implemented operational path is:
 
 ```text
 Knowledge
@@ -1559,6 +1582,33 @@ It is optional because `playbook_run_id` is optional. `DecisionOutcome` preserve
 through exact DecisionAction IDs, but an action without the Run relation provides no Playbook or
 Knowledge-use provenance.
 
+## PlaybookRevision persistence integrity
+
+At the same checkpoint, supported `PlaybookRevisionRepository.save()` operations are create-once.
+One persisted Revision UUID identifies one complete validated modeled payload. Initial creation is
+non-replacing; an identical complete same-ID replay preserves existing bytes; a different
+same-ID payload conflicts without overwrite. Malformed or invalid stored data and
+filename/request-to-payload UUID mismatches fail visibly without repair. `load_all()` validates
+filename UUID syntax and embedded identity, and missing `get_by_id()` retains `None`.
+
+This is exact modeled equality, including every scalar and ordered collection. It is not semantic
+deduplication: the same content under a new UUID remains a distinct valid Revision. Normal
+`PlaybookRevisionService.add()` continues to create a fresh UUID and is non-idempotent. No update,
+replace, edit, delete, repair, replay, version, or supersession service is introduced.
+
+`PlaybookRun.revision_id` remains optional, explicit, caller-supplied execution provenance. When
+present, it retains stable Revision payload meaning going forward under supported writes.
+Evaluation and EvolutionProposal preserve that identity transitively through their exact Run
+relations; activation and application records preserve it through their exact Revision UUID
+relations. None snapshots the Revision payload. Activation or application state is not required
+to record a truthful Run, and no automatic selection or Run-to-application binding exists.
+
+The guarantee is prospective and limited to supported repository operations. Top-level model
+freezing does not deeply freeze nested lists. Pre-hardening payload history cannot be proven or
+reconstructed. There are no Revision snapshots, hashes, digests, content-addressed IDs, versions,
+migration, backfill, repair, backup/restore, direct-filesystem protection, tamper evidence, or
+cryptographic immutability.
+
 ## Self-observation and Consigliere boundaries
 
 The future dogfooding flow remains a design direction:
@@ -1584,7 +1634,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `0ffdda6` does not implement:
+Commit `49db077` does not implement:
 
 ```text
 execution engine
@@ -1606,6 +1656,12 @@ Knowledge supersession or revision/version lifecycle
 content-addressed Knowledge IDs or content hashes
 Knowledge payload snapshots or historical reconstruction
 filesystem tamper evidence or automatic repair
+PlaybookRevision edit/update/delete
+PlaybookRevision correction/supersession/version lifecycle
+PlaybookRevision payload snapshots or historical reconstruction
+PlaybookRevision content hashes, digests, or content-addressed IDs
+PlaybookRevision migration, backfill, repair, or backup/restore
+deep PlaybookRevision collection immutability
 special DecisionReview-to-Knowledge promotion
 durable Knowledge retrieval history
 durable recommendation events
@@ -2093,6 +2149,8 @@ externally applied to a concrete situation. NeuralEngine does not execute Playbo
   referenced by zero or many Runs.
 - The Run caller is the authority for `revision_id`. A supplied UUID declares that exact immutable
   revision content was used.
+- Under supported create-once Revision repository operations, that UUID retains stable complete
+  Revision payload meaning going forward. Run does not snapshot the Revision payload.
 - `revision_id=None` makes no revision-specific execution claim. It covers base Playbook
   execution, legacy records, or unknown revision provenance.
 - Write validation requires actions first, then the base Playbook, then a supplied revision, then
@@ -2102,6 +2160,8 @@ externally applied to a concrete situation. NeuralEngine does not execute Playbo
 - Revision provenance is never inferred from active-revision state, activation history,
   repository order, timestamps, `PlaybookRevisionApplication`, or application-intent records.
 - A declared revision need not be active or applied.
+- No retroactive guarantee is made for Revision payload history recorded before the create-once
+  hardening.
 - Runtime state must not mutate the playbook definition.
 - Evaluation is modeled separately.
 
@@ -2165,7 +2225,9 @@ Through `PlaybookEvaluation.run_id → PlaybookRun(revision_id?, playbook_id) �
 Playbook.knowledge_ids`, an Evaluation provides durable feedback at Playbook and declared
 Knowledge-set scope and preserves explicit optional revision provenance transitively. The
 Evaluation schema does not store a revision ID directly. It does not attribute an outcome to one
-Knowledge item or prove causal or comparative improvement.
+Knowledge item or prove causal or comparative improvement. Under supported create-once Revision
+writes, the transitive Revision UUID retains stable payload meaning going forward; Evaluation
+does not snapshot that payload or prove pre-hardening history.
 
 ## Typical transitions
 
@@ -2202,7 +2264,9 @@ An EvolutionProposal expresses a controlled suggestion for changing a playbook b
   belongs to the target Playbook through the validated Run reader.
 - Exact `evaluation_ids → PlaybookEvaluation.run_id → PlaybookRun.revision_id?` relations preserve
   optional revision provenance transitively; EvolutionProposal does not store a revision ID
-  directly.
+  directly. Under supported create-once Revision writes, a present transitive UUID retains stable
+  payload meaning going forward; the Proposal stores no Revision payload snapshot and proves no
+  pre-hardening history.
 - Proposal and applied revision are distinct concepts.
 - Public behavior changes require architectural review.
 
@@ -2240,6 +2304,18 @@ Creating a revision does not mutate the Playbook, apply the proposal, activate t
 perform automatic evolution. Activation and application are represented by separate immutable
 records.
 
+A frozen top-level model expresses immutable domain intent but does not deeply freeze nested list
+fields. Under supported repository writes, one Revision UUID binds to one complete validated
+modeled payload. Complete equality includes every modeled scalar and ordered collection. An
+identical same-ID replay preserves existing bytes; any different same-ID payload conflicts without
+overwrite. The same content under a new UUID remains a distinct valid Revision.
+
+Valid old JSON remains readable without migration. The guarantee is prospective: pre-hardening
+payload history cannot be proven retroactively, and direct filesystem mutation remains
+out-of-band corruption. Revision is not tamper-proof, cryptographically immutable, versioned, or
+snapshotted into a Run. No content hash, historical reconstruction, repair, edit, update, delete,
+correction, or supersession lifecycle is added.
+
 A PlaybookRun may independently carry zero or one caller-supplied `revision_id`. A supplied
 relation declares that exact immutable revision content was used; omission makes no
 revision-specific claim. Revision selection, activation, or application intent never supplies or
@@ -2257,6 +2333,9 @@ provide cryptographic or filesystem tamper evidence.
 to Runs that explicitly declare it.
 
 The repository port remains persistence-focused and should not gain a broad `find_by_playbook_id` method solely to move application navigation into persistence.
+
+`PlaybookRevisionService.add()` remains fresh-ID and non-idempotent. It exposes no replay or
+replacement use case.
 
 ## Invariants
 
@@ -2288,6 +2367,10 @@ perform automatic evolution.
 Activation also does not imply execution. PlaybookRun revision provenance is supplied explicitly
 by the Run caller and is never selected from current or historical activation state. A revision
 does not need to be active for a caller to declare truthfully that its content was used.
+
+The activation record's exact `revision_id` retains stable Revision payload meaning going forward
+under supported create-once repository writes. The record does not snapshot Revision content,
+mutate it, or prove pre-hardening payload history.
 
 ## Application ownership
 
@@ -2383,6 +2466,10 @@ provenance.
 Conversely, an explicit `PlaybookRun.revision_id` does not require or imply an application record.
 Run provenance is never inferred from application intent, and a revision need not be represented
 by `PlaybookRevisionApplication` for the Run caller to declare that its content was used.
+
+The application's exact `revision_id` retains stable Revision payload meaning going forward under
+supported create-once repository writes. The application record does not snapshot Revision
+content, mutate it, or prove pre-hardening payload history.
 
 There is currently:
 
@@ -2805,6 +2892,25 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
+## PlaybookRevision persistence boundary
+
+`PlaybookRevisionService.add()` retains normal fresh-ID, non-idempotent creation. It validates the
+Playbook, accepted proposal, required ordered content, and Knowledge relations, constructs one new
+Revision, and delegates persistence. It does not compare stored payloads or implement filesystem
+publication.
+
+The `PlaybookRevisionRepository` port owns create-once persistence. An absent UUID is created
+without replacement, an identical complete same-ID replay succeeds without rewriting bytes, and a
+different same-ID payload conflicts without overwrite. Stored-data and identity-mismatch failures
+propagate through application services. Existing affected CLI handlers render the base repository
+error as controlled exit-code-1 output; no command, option, or normal success output changed.
+
+No Revision update, replace, edit, delete, repair, replay, version, or supersession service exists.
+Activation and application remain separate immutable records and do not mutate Revision.
+`PlaybookRunService` remains the owner of optional caller-supplied Revision execution provenance;
+it does not consult activation or application state and adds no automatic selection or
+Run-to-application binding.
+
 ## Decision service ownership
 
 `DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
@@ -3091,6 +3197,21 @@ services do not repair, overwrite, skip, or silently substitute persisted data. 
 Knowledge-related CLI handlers render the repository error message and exit with code 1 without a
 traceback; no commands or options were added.
 
+## PlaybookRevision persistence integrity errors
+
+The repository port exposes `PlaybookRevisionRepositoryError` with three distinct failures:
+
+- `PlaybookRevisionPersistenceConflictError` for a same-ID different-payload collision;
+- `PlaybookRevisionStoredDataError` for malformed or invalid stored Revision data or a non-UUID
+  filename stem;
+- `PlaybookRevisionIdentityMismatchError` when the requested or filename UUID differs from the
+  embedded `PlaybookRevision.id`.
+
+These errors fail visibly without overwrite, repair, skipping, or substitution. Existing affected
+Revision, Run, Evaluation, Proposal, activation, Knowledge-navigation, and DecisionAction CLI
+paths render the repository error message and exit with code 1 without a traceback. No command or
+option was added, and normal success output is unchanged.
+
 ---
 
 # Ports
@@ -3184,6 +3305,16 @@ First ask whether the application service can compose the navigation from existi
 Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
+
+`PlaybookRevisionRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Its `save()` contract is create-once: create an absent Revision UUID without replacement, accept
+an identical complete same-ID replay as a byte-preserving no-op, and reject a different same-ID
+payload as `PlaybookRevisionPersistenceConflictError` without writing.
+`PlaybookRevisionRepositoryError` is the base persistence failure category;
+`PlaybookRevisionStoredDataError` identifies malformed or invalid stored data and non-UUID
+filename stems, while `PlaybookRevisionIdentityMismatchError` identifies filename/request versus
+embedded UUID disagreement. A missing `get_by_id()` returns `None`. Relation filtering and normal
+fresh-ID creation remain application-service responsibilities.
 
 `PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
 `get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
@@ -3334,6 +3465,27 @@ Repository adapters require tests for:
 `PlaybookRevisionApplicationRepository` and stores application audit records under
 `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
 identity lookup operations; relation filtering remains in the application layer.
+
+## PlaybookRevision adapter create-once integrity
+
+`JsonPlaybookRevisionRepository` still stores one JSON file per Revision under
+`NeuralPaths.PLAYBOOK_REVISIONS`, with no schema, path, or repository-method change. It serializes
+and validates the complete candidate, writes and fsyncs a same-directory temporary file, and uses
+a non-replacing local filesystem publication operation so a supported save cannot replace an
+existing UUID path.
+
+An identical complete same-ID replay compares as the validated model and succeeds without
+rewriting existing bytes. Any different modeled field raises
+`PlaybookRevisionPersistenceConflictError` without write. Malformed or invalid stored data raises
+`PlaybookRevisionStoredDataError`; requested or filename UUID disagreement with embedded
+`PlaybookRevision.id` raises `PlaybookRevisionIdentityMismatchError`. `load_all()` validates UUID
+filename syntax and embedded identity. Integrity failures are not repaired, overwritten, skipped,
+or substituted, while a missing `get_by_id()` returns `None`.
+
+Valid old JSON remains readable without migration or backfill. Direct filesystem mutation remains
+out-of-band corruption. The adapter adds no deep in-memory collection immutability, tamper-proof
+or cryptographic storage, hashes, content-addressed IDs, versions, snapshots, historical
+reconstruction, repair, or backup/restore workflow.
 
 ## Decision adapter
 

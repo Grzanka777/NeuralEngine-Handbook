@@ -76,6 +76,25 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
+## PlaybookRevision persistence boundary
+
+`PlaybookRevisionService.add()` retains normal fresh-ID, non-idempotent creation. It validates the
+Playbook, accepted proposal, required ordered content, and Knowledge relations, constructs one new
+Revision, and delegates persistence. It does not compare stored payloads or implement filesystem
+publication.
+
+The `PlaybookRevisionRepository` port owns create-once persistence. An absent UUID is created
+without replacement, an identical complete same-ID replay succeeds without rewriting bytes, and a
+different same-ID payload conflicts without overwrite. Stored-data and identity-mismatch failures
+propagate through application services. Existing affected CLI handlers render the base repository
+error as controlled exit-code-1 output; no command, option, or normal success output changed.
+
+No Revision update, replace, edit, delete, repair, replay, version, or supersession service exists.
+Activation and application remain separate immutable records and do not mutate Revision.
+`PlaybookRunService` remains the owner of optional caller-supplied Revision execution provenance;
+it does not consult activation or application state and adds no automatic selection or
+Run-to-application binding.
+
 ## Decision service ownership
 
 `DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
@@ -362,6 +381,21 @@ services do not repair, overwrite, skip, or silently substitute persisted data. 
 Knowledge-related CLI handlers render the repository error message and exit with code 1 without a
 traceback; no commands or options were added.
 
+## PlaybookRevision persistence integrity errors
+
+The repository port exposes `PlaybookRevisionRepositoryError` with three distinct failures:
+
+- `PlaybookRevisionPersistenceConflictError` for a same-ID different-payload collision;
+- `PlaybookRevisionStoredDataError` for malformed or invalid stored Revision data or a non-UUID
+  filename stem;
+- `PlaybookRevisionIdentityMismatchError` when the requested or filename UUID differs from the
+  embedded `PlaybookRevision.id`.
+
+These errors fail visibly without overwrite, repair, skipping, or substitution. Existing affected
+Revision, Run, Evaluation, Proposal, activation, Knowledge-navigation, and DecisionAction CLI
+paths render the repository error message and exit with code 1 without a traceback. No command or
+option was added, and normal success output is unchanged.
+
 ---
 
 # Ports
@@ -455,6 +489,16 @@ First ask whether the application service can compose the navigation from existi
 Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.
+
+`PlaybookRevisionRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Its `save()` contract is create-once: create an absent Revision UUID without replacement, accept
+an identical complete same-ID replay as a byte-preserving no-op, and reject a different same-ID
+payload as `PlaybookRevisionPersistenceConflictError` without writing.
+`PlaybookRevisionRepositoryError` is the base persistence failure category;
+`PlaybookRevisionStoredDataError` identifies malformed or invalid stored data and non-UUID
+filename stems, while `PlaybookRevisionIdentityMismatchError` identifies filename/request versus
+embedded UUID disagreement. A missing `get_by_id()` returns `None`. Relation filtering and normal
+fresh-ID creation remain application-service responsibilities.
 
 `PlaybookRevisionApplicationRepository` remains limited to `save()`, `load_all()`, and
 `get_by_id()`. Navigation by Playbook, PlaybookRevision, or EvolutionProposal is composed by
@@ -605,6 +649,27 @@ Repository adapters require tests for:
 `PlaybookRevisionApplicationRepository` and stores application audit records under
 `NeuralPaths.PLAYBOOK_REVISION_APPLICATIONS`. It supplies only the port's basic save, load-all, and
 identity lookup operations; relation filtering remains in the application layer.
+
+## PlaybookRevision adapter create-once integrity
+
+`JsonPlaybookRevisionRepository` still stores one JSON file per Revision under
+`NeuralPaths.PLAYBOOK_REVISIONS`, with no schema, path, or repository-method change. It serializes
+and validates the complete candidate, writes and fsyncs a same-directory temporary file, and uses
+a non-replacing local filesystem publication operation so a supported save cannot replace an
+existing UUID path.
+
+An identical complete same-ID replay compares as the validated model and succeeds without
+rewriting existing bytes. Any different modeled field raises
+`PlaybookRevisionPersistenceConflictError` without write. Malformed or invalid stored data raises
+`PlaybookRevisionStoredDataError`; requested or filename UUID disagreement with embedded
+`PlaybookRevision.id` raises `PlaybookRevisionIdentityMismatchError`. `load_all()` validates UUID
+filename syntax and embedded identity. Integrity failures are not repaired, overwritten, skipped,
+or substituted, while a missing `get_by_id()` returns `None`.
+
+Valid old JSON remains readable without migration or backfill. Direct filesystem mutation remains
+out-of-band corruption. The adapter adds no deep in-memory collection immutability, tamper-proof
+or cryptographic storage, hashes, content-addressed IDs, versions, snapshots, historical
+reconstruction, repair, or backup/restore workflow.
 
 ## Decision adapter
 

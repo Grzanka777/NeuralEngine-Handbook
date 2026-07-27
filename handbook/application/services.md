@@ -74,6 +74,25 @@ application audit record. It delegates active-revision resolution to the activat
 Its relation-list methods verify the source entity, load all application records, filter in the
 application layer, preserve repository order, and perform no mutation.
 
+## PlaybookRevision persistence boundary
+
+`PlaybookRevisionService.add()` retains normal fresh-ID, non-idempotent creation. It validates the
+Playbook, accepted proposal, required ordered content, and Knowledge relations, constructs one new
+Revision, and delegates persistence. It does not compare stored payloads or implement filesystem
+publication.
+
+The `PlaybookRevisionRepository` port owns create-once persistence. An absent UUID is created
+without replacement, an identical complete same-ID replay succeeds without rewriting bytes, and a
+different same-ID payload conflicts without overwrite. Stored-data and identity-mismatch failures
+propagate through application services. Existing affected CLI handlers render the base repository
+error as controlled exit-code-1 output; no command, option, or normal success output changed.
+
+No Revision update, replace, edit, delete, repair, replay, version, or supersession service exists.
+Activation and application remain separate immutable records and do not mutate Revision.
+`PlaybookRunService` remains the owner of optional caller-supplied Revision execution provenance;
+it does not consult activation or application state and adds no automatic selection or
+Run-to-application binding.
+
 ## Decision service ownership
 
 `DecisionService.add()` creates an immutable candidate, validates referenced Observations and an

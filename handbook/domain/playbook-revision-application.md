@@ -50,6 +50,10 @@ Conversely, an explicit `PlaybookRun.revision_id` does not require or imply an a
 Run provenance is never inferred from application intent, and a revision need not be represented
 by `PlaybookRevisionApplication` for the Run caller to declare that its content was used.
 
+The application's exact `revision_id` retains stable Revision payload meaning going forward under
+supported create-once repository writes. The application record does not snapshot Revision
+content, mutate it, or prove pre-hardening payload history.
+
 There is currently:
 
 - no CLI apply command,

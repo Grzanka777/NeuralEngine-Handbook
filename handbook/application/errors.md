@@ -61,3 +61,18 @@ These errors preserve visible create-once failures across the application bounda
 services do not repair, overwrite, skip, or silently substitute persisted data. Existing
 Knowledge-related CLI handlers render the repository error message and exit with code 1 without a
 traceback; no commands or options were added.
+
+## PlaybookRevision persistence integrity errors
+
+The repository port exposes `PlaybookRevisionRepositoryError` with three distinct failures:
+
+- `PlaybookRevisionPersistenceConflictError` for a same-ID different-payload collision;
+- `PlaybookRevisionStoredDataError` for malformed or invalid stored Revision data or a non-UUID
+  filename stem;
+- `PlaybookRevisionIdentityMismatchError` when the requested or filename UUID differs from the
+  embedded `PlaybookRevision.id`.
+
+These errors fail visibly without overwrite, repair, skipping, or substitution. Existing affected
+Revision, Run, Evaluation, Proposal, activation, Knowledge-navigation, and DecisionAction CLI
+paths render the repository error message and exit with code 1 without a traceback. No command or
+option was added, and normal success output is unchanged.

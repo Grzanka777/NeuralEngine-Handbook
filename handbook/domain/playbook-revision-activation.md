@@ -19,6 +19,10 @@ Activation also does not imply execution. PlaybookRun revision provenance is sup
 by the Run caller and is never selected from current or historical activation state. A revision
 does not need to be active for a caller to declare truthfully that its content was used.
 
+The activation record's exact `revision_id` retains stable Revision payload meaning going forward
+under supported create-once repository writes. The record does not snapshot Revision content,
+mutate it, or prove pre-hardening payload history.
+
 ## Application ownership
 
 `PlaybookRevisionActivationService` owns read-only lifecycle navigation by Playbook,
