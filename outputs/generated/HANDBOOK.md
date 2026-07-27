@@ -103,7 +103,7 @@ a milestone snapshot, not a timeless guarantee.
 
 ## Decision Learning boundary
 
-Source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b` preserves the separate immutable
+Source commit `0ffdda6bfdbadd5952c1066fddd303185939d643` preserves the separate immutable
 `Decision`, `DecisionAcceptance`, `DecisionAction`, `DecisionOutcome`, and `DecisionReview`
 records, persistence-focused ports and JSON adapters, application services, container wiring,
 thin proposal/acceptance/action/outcome/review CLI commands, and the canonical
@@ -137,6 +137,26 @@ Experience relation; the scoped Experience navigation validates its requested Ex
 relations of matching Knowledge records while leaving unrelated records outside the query.
 Missing Experiences retain `ExperienceNotFoundError`, while canonical DecisionReview and
 promotion errors propagate unchanged.
+
+The same checkpoint hardens Knowledge persistence without changing the Knowledge schema.
+`KnowledgeRepository.save()` is create-once: one Knowledge UUID binds to one complete modeled
+payload under supported repository operations. An identical complete same-ID replay succeeds
+without rewriting existing bytes; a different same-ID payload conflicts without writing.
+`JsonKnowledgeRepository` publishes a validated same-directory temporary file through a
+non-replacing local filesystem operation. Malformed stored data and filename/request UUID
+mismatches fail visibly without overwrite or repair, while a missing `get_by_id()` still returns
+`None`.
+
+Complete payload equality includes `id`, `timestamp`, `statement`, `rationale`, `confidence`,
+ordered `experience_ids`, and ordered `tags`. This is exact modeled equality, not semantic
+equivalence or content deduplication. Valid old JSON remains readable without migration or
+backfill; an existing valid payload is authoritative for its UUID going forward.
+
+Playbook and PlaybookRevision continue to retain exact Knowledge UUIDs. Under supported
+create-once writes those identities now retain stable payload meaning going forward, but neither
+record snapshots Knowledge. Direct filesystem mutation remains out-of-band corruption. The
+contract is not tamper-proof storage, cryptographic immutability, Knowledge versioning,
+historical reconstruction, payload snapshotting, or hash-based integrity.
 
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
@@ -222,7 +242,7 @@ mutation, materialization, activation, application, or evolution.
 
 ## Status and purpose
 
-NeuralEngine source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b` implements the Decision,
+NeuralEngine source commit `0ffdda6bfdbadd5952c1066fddd303185939d643` implements the Decision,
 DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview foundations plus the
 canonical `DecisionLifecycleService` projection. They record an immutable proposed choice,
 explicit authorization, work performed under that authorization, factual results, and authorized
@@ -653,9 +673,13 @@ load_all()
 get_by_id()
 ```
 
-No Knowledge relation or provenance query was added. `JsonKnowledgeRepository` and the Knowledge
-JSON schema are unchanged. Knowledge membership filtering and relation validation remain
-application policy.
+No Knowledge relation or provenance query was added. The Knowledge JSON schema is unchanged.
+`save()` now defines create-once persistence: an absent UUID is created once, an identical
+complete same-ID replay is a no-op without byte rewrite, and a different same-ID payload
+conflicts without writing. `JsonKnowledgeRepository` enforces this with validated same-directory
+temporary data and non-replacing local publication. Malformed stored data and filename/request
+identity mismatch fail visibly on collisions and reads without repair. Knowledge membership
+filtering and Experience relation validation remain application policy.
 
 ## Application service
 
@@ -1121,7 +1145,7 @@ neural observation experiences OBSERVATION_UUID
 neural decision state DECISION_UUID
 ```
 
-The current source checkpoint `18788ad` additionally exposes explicit revision execution
+The current source checkpoint `0ffdda6` additionally exposes explicit revision execution
 provenance through:
 
 ```text
@@ -1391,6 +1415,10 @@ Missing Experience and canonical DecisionReview/promotion-integrity errors rende
 messages and exit nonzero without a traceback. No Knowledge-specific promotion error taxonomy,
 new command, or success-output change exists.
 
+Repository persistence conflicts, invalid stored data, and filename/request UUID mismatches also
+render controlled exit-code-1 errors on the applicable Knowledge surfaces. This changes no
+command, option, or success output.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
@@ -1491,7 +1519,7 @@ because PlaybookRun and Playbook expose no project key. `DecisionOutcome` remain
 Experience. The promotion use case copies selected Review text into optional immutable Experience
 provenance and never mutates a Playbook.
 
-At source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b`, the implemented operational path is:
+At source commit `0ffdda6bfdbadd5952c1066fddd303185939d643`, the implemented operational path is:
 
 ```text
 Knowledge
@@ -1556,7 +1584,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `18788ad` does not implement:
+Commit `0ffdda6` does not implement:
 
 ```text
 execution engine
@@ -1573,6 +1601,11 @@ git ingestion
 automatic Observation creation
 automatic Experience creation
 automatic Knowledge creation
+Knowledge update/edit/delete
+Knowledge supersession or revision/version lifecycle
+content-addressed Knowledge IDs or content hashes
+Knowledge payload snapshots or historical reconstruction
+filesystem tamper evidence or automatic repair
 special DecisionReview-to-Knowledge promotion
 durable Knowledge retrieval history
 durable recommendation events
@@ -1837,6 +1870,23 @@ Knowledge is reusable, generalized understanding derived from experience.
 - Provenance remains transitively available through `Knowledge.experience_ids`; Review provenance
   is not copied into Knowledge.
 - Domain and relation validation precede persistence.
+- Under supported repository operations, one persisted Knowledge UUID binds to one complete
+  modeled Knowledge value.
+
+Complete persisted equality is exact and order-sensitive:
+
+```text
+id
+timestamp
+statement
+rationale
+confidence
+experience_ids in order
+tags in order
+```
+
+This is not semantic equivalence or content deduplication. The same content under a new UUID is a
+distinct Knowledge value.
 
 ## Typical transitions
 
@@ -1887,12 +1937,54 @@ matches the Review. The guarantee is limited to validation already owned by
 `ExperienceService.get_by_id()`; it does not recursively validate every possible Observation or
 DecisionAction relation.
 
+## Create-once persistence integrity
+
+`KnowledgeRepository.save()` defines this supported-write contract:
+
+```text
+absent UUID path
+→ create one persisted Knowledge payload
+
+same ID + identical complete validated payload
+→ successful no-op replay without rewriting existing bytes
+
+same ID + different complete payload
+→ KnowledgePersistenceConflictError without modifying existing bytes
+```
+
+`JsonKnowledgeRepository` serializes and validates the candidate, writes and flushes a
+same-directory temporary file, and uses a non-replacing local filesystem publication operation.
+If the final UUID path already exists, the adapter validates the stored payload before deciding
+whether the operation is an identical replay or a conflict.
+
+Stored-data failures remain distinct:
+
+- `KnowledgePersistenceConflictError` means one UUID was reused for a different complete payload;
+- `KnowledgeStoredDataError` means existing persisted data is malformed or invalid;
+- `KnowledgeIdentityMismatchError` means the filename or requested UUID differs from embedded
+  `Knowledge.id`.
+
+Existing corrupt data fails visibly and is not repaired, replaced, skipped, or silently
+substituted. `get_by_id()` and `load_all()` verify the requested or filename UUID against embedded
+`Knowledge.id`; a missing `get_by_id()` still returns `None`.
+
+The guarantee is create-once under supported repository operations. Direct filesystem mutation
+remains out-of-band corruption. There is no tamper-proof storage, cryptographic immutability,
+filesystem tamper evidence, content hash, Knowledge version or revision lifecycle, historical
+reconstruction, or payload snapshot.
+
 ## Compatibility and learning boundary
 
-The hardening adds no Knowledge field, Review provenance copy, authority marker, idempotency
-behavior, repository method, adapter format, command, or automatic creation. Knowledge may still
-reference one or more Experiences, mix ordinary and promoted sources, combine different Reviews,
-and retain duplicate Experience IDs. Knowledge creation itself remains non-idempotent.
+The hardening adds no Knowledge JSON field, Review provenance copy, authority marker, repository
+method, command, option, migration, backfill, or automatic creation. Valid old JSON remains
+readable, existing IDs and relations remain unchanged, and the current valid payload already
+stored for an ID is authoritative going forward. This does not retroactively prove that it was
+never overwritten before the hardening.
+
+Knowledge may still reference one or more Experiences, mix ordinary and promoted sources,
+combine different Reviews, and retain duplicate Experience IDs. Ordinary service/CLI creation
+still generates a new UUID and is not semantic or content-idempotent; only an identical
+repository replay of the same complete ID-bearing value is a no-op.
 
 Durable provenance is:
 
@@ -1922,6 +2014,10 @@ relations preserve it transitively without attributing effects to one Knowledge 
 Read validation performs one validated Experience read per stored relation, including duplicates.
 The resulting linear read amplification is an intentional fail-closed trade-off; this milestone
 adds no cache, batch reader, or deduplication.
+
+The contract also adds no Knowledge update, edit, delete, supersession, revision/version
+lifecycle, content-addressed ID, actor/change audit, automatic repair, retrieval history,
+recommendation event, per-Knowledge causal attribution, or automatic learning.
 
 ---
 
@@ -1956,6 +2052,11 @@ A Playbook defines an executable or operationalized procedure derived from knowl
 
 Knowledge selection is explicit. It is not durable retrieval history, a recommendation event,
 execution, evaluation, or proof that any individual Knowledge item caused an outcome.
+
+The Playbook retains exact Knowledge UUIDs rather than Knowledge payload snapshots. Supported
+create-once Knowledge repository writes give each referenced UUID stable payload meaning going
+forward. This does not add a Knowledge snapshot, version relation, content hash, historical
+reconstruction, or protection from direct filesystem mutation.
 
 ## Typical transitions
 
@@ -2143,6 +2244,11 @@ A PlaybookRun may independently carry zero or one caller-supplied `revision_id`.
 relation declares that exact immutable revision content was used; omission makes no
 revision-specific claim. Revision selection, activation, or application intent never supplies or
 proves this Run relation.
+
+Any Knowledge provenance retained by the parent Playbook or revised content remains UUID-based.
+Supported create-once Knowledge repository writes give those exact IDs stable payload meaning
+going forward; PlaybookRevision does not embed or snapshot Knowledge, add Knowledge versioning, or
+provide cryptographic or filesystem tamper evidence.
 
 ## Confirmed application rule
 
@@ -2740,6 +2846,17 @@ learning record.
 
 ## Playbook-scoped Knowledge use and feedback ownership
 
+`KnowledgeService` still owns evidence validation and creation. It validates Experience evidence,
+constructs the complete Knowledge value, and delegates persistence through `KnowledgeRepository`;
+it does not compare stored payloads or implement filesystem publication.
+
+The repository port owns create-once persistence semantics, and `JsonKnowledgeRepository`
+enforces them. An absent UUID is created once, an identical complete same-ID replay succeeds
+without rewrite, and a different same-ID payload conflicts without writing. Stored-data and
+identity mismatch failures propagate through the service. Knowledge-related CLI handlers only
+render `KnowledgeRepositoryError` as controlled exit-code-1 output; no command, option, or success
+behavior changed.
+
 `PlaybookService.add()` requires at least one exact Knowledge UUID and validates every supplied
 Knowledge relation before saving the caller-defined Playbook.
 
@@ -2960,6 +3077,20 @@ neural knowledge show
 neural experience knowledge
 ```
 
+## Knowledge persistence integrity errors
+
+The repository port exposes `KnowledgeRepositoryError` with three distinct failures:
+
+- `KnowledgePersistenceConflictError` for a same-ID different-payload collision;
+- `KnowledgeStoredDataError` for malformed or invalid stored Knowledge;
+- `KnowledgeIdentityMismatchError` when the requested or filename UUID differs from embedded
+  `Knowledge.id`.
+
+These errors preserve visible create-once failures across the application boundary. Knowledge
+services do not repair, overwrite, skip, or silently substitute persisted data. Existing
+Knowledge-related CLI handlers render the repository error message and exit with code 1 without a
+traceback; no commands or options were added.
+
 ---
 
 # Ports
@@ -3086,6 +3217,10 @@ and promoted Experiences. Review validation, copied-text integrity, Observation 
 `ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
 
 `KnowledgeRepository` also remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Its `save()` contract is create-once: create an absent Knowledge UUID, accept an identical
+complete same-ID replay as a no-op, and reject a different same-ID payload as
+`KnowledgePersistenceConflictError` without writing. Persistence conflict, invalid stored data,
+and filename/request-to-payload identity mismatch are distinct repository failures.
 Knowledge membership filtering and complete relation validation remain in `KnowledgeService`.
 KnowledgeService does not use `ExperienceRepository` directly; its separate application-facing
 `ExperienceReader` exposes only validated `get_by_id()` behavior implemented by
@@ -3254,12 +3389,30 @@ No migration or production adapter rewrite was required. The adapter performs no
 source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
 provenance. No promotion adapter, repository, path, or Brain directory exists.
 
-## Knowledge adapter compatibility
+## Knowledge adapter create-once integrity
 
-`JsonKnowledgeRepository` and `KnowledgeRepository` remain unchanged. Knowledge-to-Experience
-integrity is enforced by application composition through `ExperienceReader` and
-`ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
-format, migration, relation index, second write, or repair-on-read behavior was added.
+`JsonKnowledgeRepository` still stores one JSON file per Knowledge under
+`NeuralPaths.KNOWLEDGE`, with no schema, path, or repository-method change. Before publication it
+serializes and validates the complete candidate and writes, flushes, and fsyncs a same-directory
+temporary file. It then uses a non-replacing local filesystem publication operation, so a final
+UUID path cannot be replaced by a supported save.
+
+An absent path is created once. If the path exists, exact complete modeled equality produces a
+successful no-op without rewriting existing bytes; any different modeled field raises
+`KnowledgePersistenceConflictError` without a write. Malformed or invalid existing data raises
+`KnowledgeStoredDataError`, and filename/request UUID disagreement with embedded `Knowledge.id`
+raises `KnowledgeIdentityMismatchError`. Save collisions, `get_by_id()`, and `load_all()` fail
+visibly for those integrity problems instead of repairing, replacing, skipping, or substituting
+data. Missing `get_by_id()` retains `None`.
+
+Valid old JSON remains readable without migration or backfill, and the already stored valid
+payload is grandfathered as authoritative for its UUID going forward. Direct filesystem mutation
+is out-of-band corruption; the adapter adds no tamper-proofing, cryptographic immutability,
+content hashes, Knowledge versions, snapshots, or historical reconstruction.
+
+Knowledge-to-Experience relation integrity remains separate application composition through
+`ExperienceReader` and `ExperienceService.get_by_id()`. No Knowledge or Experience JSON field,
+relation index, or repair-on-read behavior was added.
 
 ## PlaybookRun adapter compatibility
 
@@ -4028,8 +4181,14 @@ advisory layer rather than authoritative storage.
 - Automatic promotion and a separate promotion/link aggregate were rejected because authority and
   provenance belong in one explicit Experience write. Repository-order duplicate selection was
   rejected in favor of a dedicated fail-closed ambiguity error.
-- No Knowledge schema, authority, idempotency, repository, adapter, or command changed. Duplicate
-  Experience IDs remain supported, and read validation performs one validated read per relation.
+- At the earlier `1b45beb` Experience-integrity checkpoint, no Knowledge schema, authority,
+  idempotency, repository, adapter, or command changed. Duplicate Experience IDs remain supported,
+  and read validation performs one validated read per relation.
+- Source commit `0ffdda6bfdbadd5952c1066fddd303185939d643` hardens the unchanged Knowledge
+  schema and repository surface with create-once supported-write integrity: identical complete
+  same-ID replay is a no-op, different payload conflicts, malformed data and identity mismatch
+  fail visibly, and no migration or repair occurs. This is not Knowledge versioning, snapshotting,
+  hashing, historical reconstruction, or filesystem tamper protection.
 - `neural knowledge add` and `neural knowledge from-experience` are explicit creation;
   `neural experience knowledge` is read-only navigation.
 - Source commit `ebab369f24385494da5906f523368d81eb08d639` documents the implemented

@@ -87,12 +87,30 @@ No migration or production adapter rewrite was required. The adapter performs no
 source copying, integrity repair, idempotency decision, promotion policy, second write, or inferred
 provenance. No promotion adapter, repository, path, or Brain directory exists.
 
-## Knowledge adapter compatibility
+## Knowledge adapter create-once integrity
 
-`JsonKnowledgeRepository` and `KnowledgeRepository` remain unchanged. Knowledge-to-Experience
-integrity is enforced by application composition through `ExperienceReader` and
-`ExperienceService.get_by_id()`, not by either JSON adapter. No Knowledge or Experience JSON field,
-format, migration, relation index, second write, or repair-on-read behavior was added.
+`JsonKnowledgeRepository` still stores one JSON file per Knowledge under
+`NeuralPaths.KNOWLEDGE`, with no schema, path, or repository-method change. Before publication it
+serializes and validates the complete candidate and writes, flushes, and fsyncs a same-directory
+temporary file. It then uses a non-replacing local filesystem publication operation, so a final
+UUID path cannot be replaced by a supported save.
+
+An absent path is created once. If the path exists, exact complete modeled equality produces a
+successful no-op without rewriting existing bytes; any different modeled field raises
+`KnowledgePersistenceConflictError` without a write. Malformed or invalid existing data raises
+`KnowledgeStoredDataError`, and filename/request UUID disagreement with embedded `Knowledge.id`
+raises `KnowledgeIdentityMismatchError`. Save collisions, `get_by_id()`, and `load_all()` fail
+visibly for those integrity problems instead of repairing, replacing, skipping, or substituting
+data. Missing `get_by_id()` retains `None`.
+
+Valid old JSON remains readable without migration or backfill, and the already stored valid
+payload is grandfathered as authoritative for its UUID going forward. Direct filesystem mutation
+is out-of-band corruption; the adapter adds no tamper-proofing, cryptographic immutability,
+content hashes, Knowledge versions, snapshots, or historical reconstruction.
+
+Knowledge-to-Experience relation integrity remains separate application composition through
+`ExperienceReader` and `ExperienceService.get_by_id()`. No Knowledge or Experience JSON field,
+relation index, or repair-on-read behavior was added.
 
 ## PlaybookRun adapter compatibility
 

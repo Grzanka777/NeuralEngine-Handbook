@@ -31,6 +31,11 @@ relation declares that exact immutable revision content was used; omission makes
 revision-specific claim. Revision selection, activation, or application intent never supplies or
 proves this Run relation.
 
+Any Knowledge provenance retained by the parent Playbook or revised content remains UUID-based.
+Supported create-once Knowledge repository writes give those exact IDs stable payload meaning
+going forward; PlaybookRevision does not embed or snapshot Knowledge, add Knowledge versioning, or
+provide cryptographic or filesystem tamper evidence.
+
 ## Confirmed application rule
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns revision navigation for a playbook.

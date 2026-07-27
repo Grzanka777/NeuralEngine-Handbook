@@ -30,6 +30,11 @@ A Playbook defines an executable or operationalized procedure derived from knowl
 Knowledge selection is explicit. It is not durable retrieval history, a recommendation event,
 execution, evaluation, or proof that any individual Knowledge item caused an outcome.
 
+The Playbook retains exact Knowledge UUIDs rather than Knowledge payload snapshots. Supported
+create-once Knowledge repository writes give each referenced UUID stable payload meaning going
+forward. This does not add a Knowledge snapshot, version relation, content hash, historical
+reconstruction, or protection from direct filesystem mutation.
+
 ## Typical transitions
 
 `Playbook` → `PlaybookRun`

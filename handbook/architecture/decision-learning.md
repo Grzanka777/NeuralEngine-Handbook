@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-NeuralEngine source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b` implements the Decision,
+NeuralEngine source commit `0ffdda6bfdbadd5952c1066fddd303185939d643` implements the Decision,
 DecisionAcceptance, DecisionAction, DecisionOutcome, and DecisionReview foundations plus the
 canonical `DecisionLifecycleService` projection. They record an immutable proposed choice,
 explicit authorization, work performed under that authorization, factual results, and authorized
@@ -433,9 +433,13 @@ load_all()
 get_by_id()
 ```
 
-No Knowledge relation or provenance query was added. `JsonKnowledgeRepository` and the Knowledge
-JSON schema are unchanged. Knowledge membership filtering and relation validation remain
-application policy.
+No Knowledge relation or provenance query was added. The Knowledge JSON schema is unchanged.
+`save()` now defines create-once persistence: an absent UUID is created once, an identical
+complete same-ID replay is a no-op without byte rewrite, and a different same-ID payload
+conflicts without writing. `JsonKnowledgeRepository` enforces this with validated same-directory
+temporary data and non-replacing local publication. Malformed stored data and filename/request
+identity mismatch fail visibly on collisions and reads without repair. Knowledge membership
+filtering and Experience relation validation remain application policy.
 
 ## Application service
 
@@ -901,7 +905,7 @@ neural observation experiences OBSERVATION_UUID
 neural decision state DECISION_UUID
 ```
 
-The current source checkpoint `18788ad` additionally exposes explicit revision execution
+The current source checkpoint `0ffdda6` additionally exposes explicit revision execution
 provenance through:
 
 ```text
@@ -1171,6 +1175,10 @@ Missing Experience and canonical DecisionReview/promotion-integrity errors rende
 messages and exit nonzero without a traceback. No Knowledge-specific promotion error taxonomy,
 new command, or success-output change exists.
 
+Repository persistence conflicts, invalid stored data, and filename/request UUID mismatches also
+render controlled exit-code-1 errors on the applicable Knowledge surfaces. This changes no
+command, option, or success output.
+
 `neural decision state DECISION_UUID` renders exactly one of:
 
 ```text
@@ -1271,7 +1279,7 @@ because PlaybookRun and Playbook expose no project key. `DecisionOutcome` remain
 Experience. The promotion use case copies selected Review text into optional immutable Experience
 provenance and never mutates a Playbook.
 
-At source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b`, the implemented operational path is:
+At source commit `0ffdda6bfdbadd5952c1066fddd303185939d643`, the implemented operational path is:
 
 ```text
 Knowledge
@@ -1336,7 +1344,7 @@ no recommendation can directly mutate NeuralEngine or authorize a durable record
 
 ## Current non-behavior
 
-Commit `18788ad` does not implement:
+Commit `0ffdda6` does not implement:
 
 ```text
 execution engine
@@ -1353,6 +1361,11 @@ git ingestion
 automatic Observation creation
 automatic Experience creation
 automatic Knowledge creation
+Knowledge update/edit/delete
+Knowledge supersession or revision/version lifecycle
+content-addressed Knowledge IDs or content hashes
+Knowledge payload snapshots or historical reconstruction
+filesystem tamper evidence or automatic repair
 special DecisionReview-to-Knowledge promotion
 durable Knowledge retrieval history
 durable recommendation events

@@ -26,6 +26,23 @@ Knowledge is reusable, generalized understanding derived from experience.
 - Provenance remains transitively available through `Knowledge.experience_ids`; Review provenance
   is not copied into Knowledge.
 - Domain and relation validation precede persistence.
+- Under supported repository operations, one persisted Knowledge UUID binds to one complete
+  modeled Knowledge value.
+
+Complete persisted equality is exact and order-sensitive:
+
+```text
+id
+timestamp
+statement
+rationale
+confidence
+experience_ids in order
+tags in order
+```
+
+This is not semantic equivalence or content deduplication. The same content under a new UUID is a
+distinct Knowledge value.
 
 ## Typical transitions
 
@@ -76,12 +93,54 @@ matches the Review. The guarantee is limited to validation already owned by
 `ExperienceService.get_by_id()`; it does not recursively validate every possible Observation or
 DecisionAction relation.
 
+## Create-once persistence integrity
+
+`KnowledgeRepository.save()` defines this supported-write contract:
+
+```text
+absent UUID path
+→ create one persisted Knowledge payload
+
+same ID + identical complete validated payload
+→ successful no-op replay without rewriting existing bytes
+
+same ID + different complete payload
+→ KnowledgePersistenceConflictError without modifying existing bytes
+```
+
+`JsonKnowledgeRepository` serializes and validates the candidate, writes and flushes a
+same-directory temporary file, and uses a non-replacing local filesystem publication operation.
+If the final UUID path already exists, the adapter validates the stored payload before deciding
+whether the operation is an identical replay or a conflict.
+
+Stored-data failures remain distinct:
+
+- `KnowledgePersistenceConflictError` means one UUID was reused for a different complete payload;
+- `KnowledgeStoredDataError` means existing persisted data is malformed or invalid;
+- `KnowledgeIdentityMismatchError` means the filename or requested UUID differs from embedded
+  `Knowledge.id`.
+
+Existing corrupt data fails visibly and is not repaired, replaced, skipped, or silently
+substituted. `get_by_id()` and `load_all()` verify the requested or filename UUID against embedded
+`Knowledge.id`; a missing `get_by_id()` still returns `None`.
+
+The guarantee is create-once under supported repository operations. Direct filesystem mutation
+remains out-of-band corruption. There is no tamper-proof storage, cryptographic immutability,
+filesystem tamper evidence, content hash, Knowledge version or revision lifecycle, historical
+reconstruction, or payload snapshot.
+
 ## Compatibility and learning boundary
 
-The hardening adds no Knowledge field, Review provenance copy, authority marker, idempotency
-behavior, repository method, adapter format, command, or automatic creation. Knowledge may still
-reference one or more Experiences, mix ordinary and promoted sources, combine different Reviews,
-and retain duplicate Experience IDs. Knowledge creation itself remains non-idempotent.
+The hardening adds no Knowledge JSON field, Review provenance copy, authority marker, repository
+method, command, option, migration, backfill, or automatic creation. Valid old JSON remains
+readable, existing IDs and relations remain unchanged, and the current valid payload already
+stored for an ID is authoritative going forward. This does not retroactively prove that it was
+never overwritten before the hardening.
+
+Knowledge may still reference one or more Experiences, mix ordinary and promoted sources,
+combine different Reviews, and retain duplicate Experience IDs. Ordinary service/CLI creation
+still generates a new UUID and is not semantic or content-idempotent; only an identical
+repository replay of the same complete ID-bearing value is a no-op.
 
 Durable provenance is:
 
@@ -111,3 +170,7 @@ relations preserve it transitively without attributing effects to one Knowledge 
 Read validation performs one validated Experience read per stored relation, including duplicates.
 The resulting linear read amplification is an intentional fail-closed trade-off; this milestone
 adds no cache, batch reader, or deduplication.
+
+The contract also adds no Knowledge update, edit, delete, supersession, revision/version
+lifecycle, content-addressed ID, actor/change audit, automatic repair, retrieval history,
+recommendation event, per-Knowledge causal attribution, or automatic learning.

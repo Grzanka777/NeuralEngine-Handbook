@@ -183,7 +183,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     build(work_root)
 
     handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
-    assert "NeuralEngine source commit `18788adacf75ff7f11d0dd6f28e5da8cf143081b`" in handbook
+    assert "NeuralEngine source commit `0ffdda6bfdbadd5952c1066fddd303185939d643`" in handbook
     assert "neural decision add" in handbook
     assert "neural decision list" in handbook
     assert "neural decision show DECISION_UUID" in handbook
@@ -301,6 +301,44 @@ def test_application_architecture_includes_accepted_adrs(tmp_path: Path) -> None
     assert "ADR-0006" in application
     assert "ADR-0007" in application
     assert application.count("Status: Accepted") >= 3
+
+
+def test_generated_outputs_preserve_knowledge_create_once_integrity(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "one Knowledge UUID binds to one complete modeled" in artifact
+        assert "identical complete same-ID replay" in artifact
+        assert "without rewriting existing bytes" in artifact
+        assert "different same-ID payload conflicts without writing" in artifact
+        assert "filename/request UUID" in artifact
+        assert "mismatches fail visibly" in artifact
+        assert "Direct filesystem mutation remains out-of-band corruption" in artifact
+        assert "Valid old JSON remains readable" in artifact
+        assert "not tamper-proof storage" in artifact
+        assert "Knowledge versioning" in artifact
+        assert "historical reconstruction" in artifact
+        assert "payload snapshotting" in artifact
+
+    assert "same-directory temporary file" in handbook
+    assert "KnowledgePersistenceConflictError without modifying existing bytes" in handbook
+    assert "filename or requested UUID differs from embedded" in handbook
+    assert "Missing `get_by_id()` retains `None`" in handbook
+    assert "stored for an ID is authoritative going forward" in handbook
+
+    assert "The repository port owns create-once persistence semantics" in application
+    assert "KnowledgeRepositoryError" in application
+    assert "controlled exit-code-1 output" in application
+    assert "no schema, path, or repository-method change" in application
 
 
 def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(

@@ -61,8 +61,14 @@ advisory layer rather than authoritative storage.
 - Automatic promotion and a separate promotion/link aggregate were rejected because authority and
   provenance belong in one explicit Experience write. Repository-order duplicate selection was
   rejected in favor of a dedicated fail-closed ambiguity error.
-- No Knowledge schema, authority, idempotency, repository, adapter, or command changed. Duplicate
-  Experience IDs remain supported, and read validation performs one validated read per relation.
+- At the earlier `1b45beb` Experience-integrity checkpoint, no Knowledge schema, authority,
+  idempotency, repository, adapter, or command changed. Duplicate Experience IDs remain supported,
+  and read validation performs one validated read per relation.
+- Source commit `0ffdda6bfdbadd5952c1066fddd303185939d643` hardens the unchanged Knowledge
+  schema and repository surface with create-once supported-write integrity: identical complete
+  same-ID replay is a no-op, different payload conflicts, malformed data and identity mismatch
+  fail visibly, and no migration or repair occurs. This is not Knowledge versioning, snapshotting,
+  hashing, historical reconstruction, or filesystem tamper protection.
 - `neural knowledge add` and `neural knowledge from-experience` are explicit creation;
   `neural experience knowledge` is read-only navigation.
 - Source commit `ebab369f24385494da5906f523368d81eb08d639` documents the implemented

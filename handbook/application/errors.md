@@ -47,3 +47,17 @@ neural knowledge list
 neural knowledge show
 neural experience knowledge
 ```
+
+## Knowledge persistence integrity errors
+
+The repository port exposes `KnowledgeRepositoryError` with three distinct failures:
+
+- `KnowledgePersistenceConflictError` for a same-ID different-payload collision;
+- `KnowledgeStoredDataError` for malformed or invalid stored Knowledge;
+- `KnowledgeIdentityMismatchError` when the requested or filename UUID differs from embedded
+  `Knowledge.id`.
+
+These errors preserve visible create-once failures across the application boundary. Knowledge
+services do not repair, overwrite, skip, or silently substitute persisted data. Existing
+Knowledge-related CLI handlers render the repository error message and exit with code 1 without a
+traceback; no commands or options were added.

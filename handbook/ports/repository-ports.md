@@ -56,6 +56,10 @@ and promoted Experiences. Review validation, copied-text integrity, Observation 
 `ExperienceService`; no promotion, relation, or idempotency query belongs to the port.
 
 `KnowledgeRepository` also remains limited to `save()`, `load_all()`, and `get_by_id()`.
+Its `save()` contract is create-once: create an absent Knowledge UUID, accept an identical
+complete same-ID replay as a no-op, and reject a different same-ID payload as
+`KnowledgePersistenceConflictError` without writing. Persistence conflict, invalid stored data,
+and filename/request-to-payload identity mismatch are distinct repository failures.
 Knowledge membership filtering and complete relation validation remain in `KnowledgeService`.
 KnowledgeService does not use `ExperienceRepository` directly; its separate application-facing
 `ExperienceReader` exposes only validated `get_by_id()` behavior implemented by

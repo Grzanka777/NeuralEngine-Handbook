@@ -115,6 +115,17 @@ learning record.
 
 ## Playbook-scoped Knowledge use and feedback ownership
 
+`KnowledgeService` still owns evidence validation and creation. It validates Experience evidence,
+constructs the complete Knowledge value, and delegates persistence through `KnowledgeRepository`;
+it does not compare stored payloads or implement filesystem publication.
+
+The repository port owns create-once persistence semantics, and `JsonKnowledgeRepository`
+enforces them. An absent UUID is created once, an identical complete same-ID replay succeeds
+without rewrite, and a different same-ID payload conflicts without writing. Stored-data and
+identity mismatch failures propagate through the service. Knowledge-related CLI handlers only
+render `KnowledgeRepositoryError` as controlled exit-code-1 output; no command, option, or success
+behavior changed.
+
 `PlaybookService.add()` requires at least one exact Knowledge UUID and validates every supplied
 Knowledge relation before saving the caller-defined Playbook.
 
