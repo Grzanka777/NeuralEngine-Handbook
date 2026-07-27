@@ -31,7 +31,7 @@ This file is generated from NeuralEngine Handbook.
 3. Include validation output, diff stat, diff check, git status, and full diff.
 4. Stop without committing or pushing.
 
-## Future self-observation workflow
+## Development evidence dogfooding
 
 NeuralEngine development is intended to become a dogfooding source through:
 
@@ -47,9 +47,27 @@ prompt
 → post-work lesson
 ```
 
-Automatic capture produces candidates only. Manual confirmation authorizes durable records;
-immutable records preserve the audit trail; derived summaries remain replaceable views. No
-automatic persistence, ingestion, or learning exists.
+Source commit `25599655d0b1483eb37f88d379f6ca99afaf828d` implements the first deliberately
+bounded local path through this wider workflow:
+
+```text
+one NeuralEngine worktree
++ one distinct repository-relative prompt
++ one distinct repository-relative review
++ one exact lowercase full non-merge commit SHA
+→ validated non-persisted candidate preview
+→ separate authority-confirmed apply
+→ existing Decision-family records
+→ optional explicit Review-to-Experience promotion
+```
+
+Preview is side-effect free and is the default. Apply requires `--confirm-authority`, rebuilds the
+preview from fresh local file and Git facts, and rejects stale evidence before any durable call.
+The candidate is frozen, replaceable, non-persisted, and neither truth nor authority.
+
+This is explicit local ingestion, not automatic capture. It does not watch the worktree, run in the
+background, integrate with GitHub or CI, authenticate actors, create an Observation or Knowledge,
+evolve a Playbook, or learn autonomously.
 
 ## Handbook synchronization
 
@@ -221,12 +239,20 @@ The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progre
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
 only the explicit promotion use case creates an Experience, which remains distinct from Knowledge.
-There is no execution engine, lifecycle reversal, ingestion, automatic learning or evolution,
-generic event replay, or
-Consigliere integration. The authoritative implemented contract and future boundary are defined
-in `handbook/architecture/decision-learning.md`. Generic Knowledge creation is already explicit;
-`neural experience knowledge` is read-only navigation. Storing Knowledge alone does not prove
-later use or improvement.
+Source commit `25599655d0b1483eb37f88d379f6ca99afaf828d` adds one specialized local
+development-evidence boundary. `DevelopmentEvidenceSource` exposes bounded source facts;
+`LocalDevelopmentEvidenceSource` owns local file, Git, and conservative Markdown reads;
+`DevelopmentEvidenceService` owns correlation, non-persisted preview, authority-confirmed apply,
+replay, and dependency-ordered delegation. Existing Decision-family services continue to own all
+durable semantics and persistence, and the CLI remains parsing, delegation, rendering, and
+controlled-error handling only.
+
+This is not a generic ingestion framework. There is no execution engine, lifecycle reversal,
+automatic learning or evolution, generic event replay, persisted evidence or candidate aggregate,
+or Consigliere integration. The authoritative implemented contract and future boundary are
+defined in `handbook/architecture/decision-learning.md`. Generic Knowledge creation is already
+explicit; `neural experience knowledge` is read-only navigation. Storing Knowledge alone does not
+prove later use or improvement.
 
 ## Durable operational Knowledge use and feedback
 

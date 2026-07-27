@@ -36,6 +36,15 @@ A port change requires:
 - updated contract tests,
 - full validation.
 
+## Development evidence source boundary
+
+`DevelopmentEvidenceSource` is a narrow read port, not a repository. Its single `read()` operation
+accepts one repository root, one repository-relative prompt, one repository-relative review, and
+one exact full commit SHA, then returns bounded `DevelopmentEvidenceSnapshot` facts.
+
+The port does not search, watch, persist, approve, authenticate, execute validation, or expose a
+generic file/Git client. Application correlation and authority remain outside the port.
+
 ## Narrow application reader boundary
 
 `ExperienceReader` is defined beside `KnowledgeService` because it describes one application

@@ -26,6 +26,11 @@ Repository adapters require tests for:
 - invalid/corrupted persisted data,
 - provenance preservation.
 
+Development-evidence dogfooding adds no repository adapter, JSON path, Brain directory, persisted
+evidence, or persisted candidate. Its optional durable writes use the existing Decision-family and
+Experience adapters through their application services. Full prompts, reviews, diffs, and
+unrestricted validation output are not copied into repository records.
+
 ## Revision application adapter
 
 `JsonPlaybookRevisionApplicationRepository` implements

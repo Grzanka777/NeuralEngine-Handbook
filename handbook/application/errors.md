@@ -31,6 +31,18 @@ raise Exception("something failed")
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
 
+## Development evidence errors
+
+The local source adapter distinguishes invalid, missing, insufficient, and unsupported evidence.
+The application orchestrator distinguishes correlation mismatch, missing apply authority, stale
+source facts, and conflicting durable replay. Existing Decision-family idempotency conflicts are
+translated to the development-evidence conflict category without being hidden.
+
+Both `neural development-evidence preview` and `neural development-evidence apply` render these
+expected failures as controlled exit-code-1 messages without tracebacks. Rejection happens before
+writes for invalid topology, mismatch, absent authority, or stale evidence. A conflict after an
+earlier successful service call remains a visible non-transactional partial apply.
+
 ## Knowledge-to-Experience integrity errors
 
 KnowledgeService retains `ExperienceNotFoundError` for missing Experience relations. It propagates

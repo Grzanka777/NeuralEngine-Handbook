@@ -20,6 +20,11 @@ Do not add repository methods merely because a relationship exists.
 
 First ask whether the application service can compose the navigation from existing persistence operations.
 
+Development-evidence dogfooding adds no evidence or candidate repository port. Durable apply
+continues through the existing Decision-family and Experience repository contracts; the
+non-persisted candidate and source snapshot have no save, load, query, lifecycle, or approval
+surface.
+
 Confirmed rule:
 
 `PlaybookRevisionService.list_for_playbook(UUID)` owns playbook revision navigation.

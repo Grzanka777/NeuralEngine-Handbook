@@ -90,7 +90,7 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert '(decision_id, "decision_action", idempotency_key)' in skill
     assert "another action may be recorded" in skill
     assert "different key + Decision already accepted" in skill
-    assert "There is no Evidence repository, service, or CLI" in skill
+    assert "There is no persisted Evidence aggregate or Evidence repository" in skill
     assert "Do not add features" in skill
 
 
@@ -214,7 +214,7 @@ def test_handbook_contains_decision_review_experience_promotion_boundaries(
     assert "same key + different semantic payload" in handbook
     assert '(decision_id, "decision_acceptance", idempotency_key)' in handbook
     assert "different key + Decision already accepted" in handbook
-    assert "There is no Evidence repository, service, or CLI" in handbook
+    assert "There is no persisted Evidence aggregate or Evidence repository" in handbook
     assert "DecisionAction" in handbook
     assert "## DecisionAction foundation" in handbook
     assert "DecisionLifecycleService` is the only canonical owner" in handbook
@@ -376,6 +376,39 @@ def test_generated_outputs_preserve_playbook_revision_create_once_integrity(
     assert "PlaybookRevisionRepositoryError" in application
     assert "non-replacing local filesystem publication operation" in application
     assert "no command, option, or normal success output changed" in application
+
+
+def test_generated_outputs_preserve_development_evidence_dogfooding_boundaries(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "frozen non-persisted candidate preview" in artifact
+        assert "Preview is the default and performs no durable write" in artifact
+        assert "explicit authority-confirmed apply" in artifact
+        assert "prompt path + NeuralEngine + prompt SHA-256" in artifact
+        assert "full commit SHA + NeuralEngine + Git tree" in artifact
+        assert "Validation-tree strength is exactly one of" in artifact
+        assert "replay identity is `NeuralEngine:<full commit SHA>`" in artifact
+        assert "Apply is resumable, not transactional" in artifact
+        assert "automatic Observation or Knowledge creation" in artifact
+        assert "No persisted evidence or candidate aggregate" in artifact
+        assert "GitHub or CI integration" in artifact
+        assert "background ingestion" in artifact
+
+    assert "DevelopmentEvidenceService" in application
+    assert "DevelopmentEvidenceSource" in application
+    assert "LocalDevelopmentEvidenceSource" in application
+    assert "resumable but non-transactional" in application
+    assert "adds no evidence or candidate repository port" in application
 
 
 def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(

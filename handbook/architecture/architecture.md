@@ -150,12 +150,20 @@ The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progre
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;
 only the explicit promotion use case creates an Experience, which remains distinct from Knowledge.
-There is no execution engine, lifecycle reversal, ingestion, automatic learning or evolution,
-generic event replay, or
-Consigliere integration. The authoritative implemented contract and future boundary are defined
-in `handbook/architecture/decision-learning.md`. Generic Knowledge creation is already explicit;
-`neural experience knowledge` is read-only navigation. Storing Knowledge alone does not prove
-later use or improvement.
+Source commit `25599655d0b1483eb37f88d379f6ca99afaf828d` adds one specialized local
+development-evidence boundary. `DevelopmentEvidenceSource` exposes bounded source facts;
+`LocalDevelopmentEvidenceSource` owns local file, Git, and conservative Markdown reads;
+`DevelopmentEvidenceService` owns correlation, non-persisted preview, authority-confirmed apply,
+replay, and dependency-ordered delegation. Existing Decision-family services continue to own all
+durable semantics and persistence, and the CLI remains parsing, delegation, rendering, and
+controlled-error handling only.
+
+This is not a generic ingestion framework. There is no execution engine, lifecycle reversal,
+automatic learning or evolution, generic event replay, persisted evidence or candidate aggregate,
+or Consigliere integration. The authoritative implemented contract and future boundary are
+defined in `handbook/architecture/decision-learning.md`. Generic Knowledge creation is already
+explicit; `neural experience knowledge` is read-only navigation. Storing Knowledge alone does not
+prove later use or improvement.
 
 ## Durable operational Knowledge use and feedback
 

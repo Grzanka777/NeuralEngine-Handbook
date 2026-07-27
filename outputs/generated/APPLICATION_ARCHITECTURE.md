@@ -95,6 +95,37 @@ Activation and application remain separate immutable records and do not mutate R
 it does not consult activation or application state and adds no automatic selection or
 Run-to-application binding.
 
+## Development evidence orchestration ownership
+
+`DevelopmentEvidenceService` coordinates one specialized local prompt/review/commit bundle. It
+depends on `DevelopmentEvidenceSource` and the existing Decision, acceptance, action, outcome,
+review, and Experience services. It does not depend on the local adapter directly and does not
+persist its frozen `DevelopmentEvidenceCandidate`.
+
+`preview()` reads and correlates source facts, classifies validation-tree strength, creates bounded
+`EvidenceReference` values, validates the complete caller-supplied semantic payload locally, and
+returns a side-effect-free candidate. Source facts and review outcome remain evidence claims;
+caller interpretation and `DecisionOutcome.result` remain explicit caller semantics.
+
+`apply()` first requires explicit authority confirmation, then calls `preview()` again and compares
+fresh source facts with the candidate. Stale evidence fails before the first durable service call.
+Only then does it delegate in dependency order:
+
+```text
+DecisionService
+→ DecisionAcceptanceService
+→ DecisionActionService
+→ DecisionOutcomeService
+→ DecisionReviewService
+→ optional ExperienceService.add_from_decision_review()
+```
+
+The replay identity is `NeuralEngine:<full commit SHA>`, and the service derives the per-record
+idempotency key. Exact replay resumes through existing service idempotency; changed evidence or
+semantics conflicts. The sequence is resumable but non-transactional and provides no rollback.
+It never creates Observation, Knowledge, Playbook-family, persisted evidence, or persisted
+candidate records.
+
 ## Decision service ownership
 
 `DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
@@ -350,6 +381,18 @@ raise Exception("something failed")
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
 
+## Development evidence errors
+
+The local source adapter distinguishes invalid, missing, insufficient, and unsupported evidence.
+The application orchestrator distinguishes correlation mismatch, missing apply authority, stale
+source facts, and conflicting durable replay. Existing Decision-family idempotency conflicts are
+translated to the development-evidence conflict category without being hidden.
+
+Both `neural development-evidence preview` and `neural development-evidence apply` render these
+expected failures as controlled exit-code-1 messages without tracebacks. Rejection happens before
+writes for invalid topology, mismatch, absent authority, or stale evidence. A conflict after an
+earlier successful service call remains a visible non-transactional partial apply.
+
 ## Knowledge-to-Experience integrity errors
 
 KnowledgeService retains `ExperienceNotFoundError` for missing Experience relations. It propagates
@@ -436,6 +479,15 @@ A port change requires:
 - updated contract tests,
 - full validation.
 
+## Development evidence source boundary
+
+`DevelopmentEvidenceSource` is a narrow read port, not a repository. Its single `read()` operation
+accepts one repository root, one repository-relative prompt, one repository-relative review, and
+one exact full commit SHA, then returns bounded `DevelopmentEvidenceSnapshot` facts.
+
+The port does not search, watch, persist, approve, authenticate, execute validation, or expose a
+generic file/Git client. Application correlation and authority remain outside the port.
+
 ## Narrow application reader boundary
 
 `ExperienceReader` is defined beside `KnowledgeService` because it describes one application
@@ -485,6 +537,11 @@ Typical operations include:
 Do not add repository methods merely because a relationship exists.
 
 First ask whether the application service can compose the navigation from existing persistence operations.
+
+Development-evidence dogfooding adds no evidence or candidate repository port. Durable apply
+continues through the existing Decision-family and Experience repository contracts; the
+non-persisted candidate and source snapshot have no save, load, query, lifecycle, or approval
+surface.
 
 Confirmed rule:
 
@@ -613,6 +670,19 @@ Mapping code should be explicit and testable.
 
 Persistence models must not leak into application services.
 
+## Local development evidence adapter
+
+`LocalDevelopmentEvidenceSource` implements `DevelopmentEvidenceSource` for one NeuralEngine Git
+worktree. It validates the repository root and repository-relative paths, reads each selected
+Markdown file once, hashes the exact bytes, conservatively parses required sections, resolves one
+exact lowercase full commit, rejects merge commits, and reads the parent, subject, tree, changed
+paths, and patch.
+
+The adapter returns normalized source facts and stable source errors. It does not correlate domain
+meaning, classify authority, create candidates, persist records, execute validation commands,
+search for artifacts, integrate with GitHub or CI, or support background/multi-repository
+ingestion.
+
 ---
 
 # Repository Adapters
@@ -642,6 +712,11 @@ Repository adapters require tests for:
 - serialization round trip,
 - invalid/corrupted persisted data,
 - provenance preservation.
+
+Development-evidence dogfooding adds no repository adapter, JSON path, Brain directory, persisted
+evidence, or persisted candidate. Its optional durable writes use the existing Decision-family and
+Experience adapters through their application services. Full prompts, reviews, diffs, and
+unrestricted validation output are not copied into repository records.
 
 ## Revision application adapter
 

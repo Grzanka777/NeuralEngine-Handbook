@@ -93,6 +93,37 @@ Activation and application remain separate immutable records and do not mutate R
 it does not consult activation or application state and adds no automatic selection or
 Run-to-application binding.
 
+## Development evidence orchestration ownership
+
+`DevelopmentEvidenceService` coordinates one specialized local prompt/review/commit bundle. It
+depends on `DevelopmentEvidenceSource` and the existing Decision, acceptance, action, outcome,
+review, and Experience services. It does not depend on the local adapter directly and does not
+persist its frozen `DevelopmentEvidenceCandidate`.
+
+`preview()` reads and correlates source facts, classifies validation-tree strength, creates bounded
+`EvidenceReference` values, validates the complete caller-supplied semantic payload locally, and
+returns a side-effect-free candidate. Source facts and review outcome remain evidence claims;
+caller interpretation and `DecisionOutcome.result` remain explicit caller semantics.
+
+`apply()` first requires explicit authority confirmation, then calls `preview()` again and compares
+fresh source facts with the candidate. Stale evidence fails before the first durable service call.
+Only then does it delegate in dependency order:
+
+```text
+DecisionService
+→ DecisionAcceptanceService
+→ DecisionActionService
+→ DecisionOutcomeService
+→ DecisionReviewService
+→ optional ExperienceService.add_from_decision_review()
+```
+
+The replay identity is `NeuralEngine:<full commit SHA>`, and the service derives the per-record
+idempotency key. Exact replay resumes through existing service idempotency; changed evidence or
+semantics conflicts. The sequence is resumable but non-transactional and provides no rollback.
+It never creates Observation, Knowledge, Playbook-family, persisted evidence, or persisted
+candidate records.
+
 ## Decision service ownership
 
 `DecisionService.add()` creates an immutable candidate, validates referenced Observations and an
