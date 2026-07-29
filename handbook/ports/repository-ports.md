@@ -82,10 +82,19 @@ KnowledgeService does not use `ExperienceRepository` directly; its separate appl
 to either repository port.
 
 `PlaybookRunRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
-Optional revision validation, complete and scoped read integrity, and revision-to-Runs filtering
-belong to `PlaybookRunService`. The separate application-facing `PlaybookRunReader` exposes its
-validated `get_by_id()` behavior to downstream services. No revision-specific repository query
-method was added.
+Its `save()` contract is create-once: create an absent Run UUID without replacement, accept an
+identical complete same-ID replay as a metadata-preserving no-op, and reject a different same-ID
+payload as `PlaybookRunPersistenceConflictError` without writing.
+`PlaybookRunRepositoryError` is the base persistence failure category;
+`PlaybookRunStoredDataError` identifies malformed or invalid stored data and non-UUID filename
+stems, while `PlaybookRunIdentityMismatchError` identifies filename/request versus embedded UUID
+disagreement. A missing `get_by_id()` returns `None`.
+
+Optional revision validation, complete and scoped relation integrity, ordinary fresh-ID creation,
+and revision-to-Runs filtering belong to `PlaybookRunService`. The separate application-facing
+`PlaybookRunReader` exposes its validated `get_by_id()` behavior to downstream services. No
+revision-specific repository query method, update/delete surface, or content-level idempotency
+operation is added.
 
 ## Repository return types
 

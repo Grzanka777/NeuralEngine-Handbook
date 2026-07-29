@@ -93,6 +93,27 @@ Activation and application remain separate immutable records and do not mutate R
 it does not consult activation or application state and adds no automatic selection or
 Run-to-application binding.
 
+## PlaybookRun persistence boundary
+
+`PlaybookRunService.add()` retains ordinary fresh-identity creation. After validating actions, the
+base Playbook, and any explicitly supplied same-Playbook Revision, it constructs a `PlaybookRun`
+whose UUID and timestamp use the model defaults and delegates one save. `neural run add` exposes
+that service behavior. Neither surface accepts a caller-supplied Run UUID or performs semantic
+replay or content deduplication.
+
+The `PlaybookRunRepository` port separately owns exact create-once persistence. It creates an
+absent UUID without replacement, accepts an identical complete same-ID modeled replay without
+rewriting the file, and rejects a different same-ID payload without overwrite. Stored-data and
+identity-mismatch failures are visible; the repository does not repair or skip invalid records.
+This source checkpoint adds no dedicated PlaybookRun repository-error mapping to the CLI.
+
+No Run update, replace, delete, migration, repair, versioning, content-level idempotency, or replay
+service exists. No other record automatically creates a Run. Repository exact replay creates no
+additional Run, Evaluation, DecisionAction, Outcome, Review, Experience, Knowledge, or evolution
+record. Optional `revision_id` semantics are unchanged: the caller supplies it explicitly,
+omission makes no revision claim, and neither activation, application, timestamps, tags, nor
+repository order may infer it.
+
 ## Development evidence orchestration ownership
 
 `DevelopmentEvidenceService` coordinates one specialized local prompt/review/commit bundle. It

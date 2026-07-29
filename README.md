@@ -3,10 +3,10 @@
 NeuralEngine Handbook is the single source of truth for engineering rules, AI-agent policy, architecture constraints, review requirements, and generated project artifacts.
 
 The current source synchronization checkpoint is NeuralEngine commit
-`25599655d0b1483eb37f88d379f6ca99afaf828d`. It adds the first bounded local development-evidence
-dogfooding path: one NeuralEngine worktree, one explicitly selected prompt, one explicitly selected
-review, and one exact full non-merge commit produce a non-persisted preview. Only a separate,
-authority-confirmed apply may call the existing Decision-family services.
+`6303abe56e8362478f7cc60dc9d841658ee815d8`. It includes PlaybookRun create-once
+persistence integrity: one UUID binds to one complete validated modeled payload under supported
+repository operations, identical replay preserves file bytes and metadata, and conflicting,
+invalid, or identity-mismatched stored data fails visibly without replacement or repair.
 
 ## What it generates
 

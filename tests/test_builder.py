@@ -378,6 +378,51 @@ def test_generated_outputs_preserve_playbook_revision_create_once_integrity(
     assert "no command, option, or normal success output changed" in application
 
 
+def test_generated_outputs_preserve_playbook_run_create_once_integrity(
+    tmp_path: Path,
+) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "One Run UUID binds to one complete validated modeled payload" in artifact
+        assert "identical complete same-ID replay" in artifact
+        assert "bytes, inode, size, mtime, and ctime" in artifact
+        assert "PlaybookRunPersistenceConflictError" in artifact
+        assert "PlaybookRunStoredDataError" in artifact
+        assert "PlaybookRunIdentityMismatchError" in artifact
+        assert "Repository replay is not ordinary creation" in artifact
+        assert "generate a fresh Run UUID and timestamp" in artifact
+        assert "Content equality under different generated UUIDs is not idempotent" in artifact
+        assert (
+            "Activation, application, timestamps, tags, and repository order never infer"
+            in artifact
+        )
+        assert "No other record automatically creates a Run" in artifact
+        assert "creates no automatic additional Run" in artifact
+        assert "generalized crash-recovery" in artifact
+        assert "direct filesystem mutation remains out-of-band" in artifact
+
+    assert "Missing `get_by_id()` retains `None`" in handbook
+    assert "Invalid records are not skipped" in handbook
+    assert "same-directory temporary file" in handbook
+    assert "Old JSON without `revision_id` loads with `None`" in handbook
+
+    assert (
+        "The `PlaybookRunRepository` port separately owns exact create-once persistence"
+        in application
+    )
+    assert "PlaybookRunRepositoryError" in application
+    assert "adds no dedicated PlaybookRun repository-error mapping to the CLI" in application
+    assert "no schema, path, or repository-method change" in application
+
+
 def test_generated_outputs_preserve_development_evidence_dogfooding_boundaries(
     tmp_path: Path,
 ) -> None:

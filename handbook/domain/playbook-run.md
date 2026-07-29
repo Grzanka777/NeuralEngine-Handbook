@@ -25,6 +25,20 @@ externally applied to a concrete situation. NeuralEngine does not execute Playbo
 - `playbook_id` is the exact persisted relation to that Playbook.
 - A Run references zero or one PlaybookRevision through `revision_id`; one revision may be
   referenced by zero or many Runs.
+- Under supported repository writes, one Run UUID binds to one complete validated modeled
+  `PlaybookRun` payload. Complete equality covers `id`, `timestamp`, `playbook_id`, `revision_id`,
+  `situation`, ordered `actions_taken`, `outcome`, `success`, ordered `evidence`, `notes`, and
+  ordered `tags`.
+- An absent UUID is published once without replacement. An identical complete same-ID replay is a
+  successful no-op that preserves bytes, inode, size, mtime, and ctime. Any different complete
+  same-ID payload conflicts without overwrite.
+- Repository replay is distinct from ordinary `PlaybookRunService.add()` and `neural run add`.
+  Those public creation paths continue to generate a fresh Run UUID and timestamp; they do not
+  expose semantic or content-level replay across newly generated UUIDs.
+- Present repository data is validated as `PlaybookRun`. Malformed JSON or model data, non-UUID
+  filename stems, and filename/request-to-payload UUID mismatches fail visibly and are not
+  repaired, overwritten, or skipped. Missing `get_by_id()` retains `None`, and valid existing JSON
+  remains readable without migration.
 - The Run caller is the authority for `revision_id`. A supplied UUID declares that exact immutable
   revision content was used.
 - Under supported create-once Revision repository operations, that UUID retains stable complete
@@ -63,9 +77,16 @@ Run list and show output render the revision ID or `-` when absent.
 
 The relation does not implement automatic active-revision selection,
 Run-to-PlaybookRevisionApplication binding, Playbook materialization, revision content execution,
-an execution engine, Run idempotency, mixed or partial revision execution, multiple revisions per
-Run, automatic activation/application, per-Knowledge contribution attribution, causal
-improvement, automatic learning, or Consigliere integration.
+an execution engine, service/CLI Run idempotency, semantic replay, content deduplication across
+fresh UUIDs, mixed or partial revision execution, multiple revisions per Run, automatic
+activation/application, per-Knowledge contribution attribution, causal improvement, automatic
+learning, or Consigliere integration.
+
+The persistence contract adds no update, delete, replace, versioning, migration, repair, backup,
+transaction, generalized crash-recovery, tamper-proofing, cryptographic integrity, or protection
+from direct filesystem mutation. No other record automatically creates a Run. Saving one
+explicitly supplied Run creates no automatic additional Run, Evaluation, DecisionAction, Outcome,
+Review, Experience, Knowledge, or evolution record.
 
 ## Typical transitions
 

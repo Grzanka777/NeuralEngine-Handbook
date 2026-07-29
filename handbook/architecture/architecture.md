@@ -146,6 +146,38 @@ supersession, hashes, content-addressed IDs, migration, backfill, repair, backup
 filesystem tamper evidence. Direct filesystem mutation remains out-of-band corruption; the
 contract is not tamper-proof or cryptographically immutable.
 
+Source commit `6303abe56e8362478f7cc60dc9d841658ee815d8` adds create-once persistence
+integrity for `PlaybookRun`. Under supported repository operations, one Run UUID is published
+without replacement. One Run UUID binds to one complete validated modeled payload.
+
+Equality covers `id`, `timestamp`, `playbook_id`, `revision_id`, `situation`, ordered
+`actions_taken`, `outcome`, `success`, ordered `evidence`, `notes`, and ordered `tags`.
+
+`JsonPlaybookRunRepository` validates the candidate, writes and `fsync`s a repository-owned
+same-directory temporary file, and publishes it without replacing an existing UUID path. An absent
+UUID is created once. An identical complete same-ID replay is a successful no-op that preserves
+bytes, inode, size, mtime, and ctime. Any different complete same-ID payload raises
+`PlaybookRunPersistenceConflictError` without overwrite. Malformed JSON or invalid modeled data
+raises `PlaybookRunStoredDataError`; a filename or requested UUID that differs from embedded
+`PlaybookRun.id` raises `PlaybookRunIdentityMismatchError`.
+
+`get_by_id()` returns `None` when the file is absent; present data is validated and identity
+checked. `load_all()` validates every filename stem as a UUID, validates every complete Run, and
+rejects identity mismatches rather than skipping invalid records. Valid existing JSON remains
+readable without migration. Repository-owned temporary files are cleaned up.
+
+Repository replay is not ordinary creation. `PlaybookRunService.add()` and `neural run add`
+continue to generate a fresh Run UUID and timestamp and expose no same-ID or semantic replay.
+Content equality under different generated UUIDs is not idempotent or deduplicated. The repository
+adds no update, delete, replace, version, migration, repair, transaction, generalized
+crash-recovery, or tamper-proof guarantee; direct filesystem mutation remains out-of-band.
+
+Optional Revision provenance is unchanged. `playbook_id` names the base Playbook; caller-supplied
+`revision_id` may name one exact Revision, while omission makes no revision-specific claim.
+Activation, application, timestamps, tags, and repository order never infer that relation.
+No other record automatically creates a Run. Persistence creates no automatic additional Run,
+Evaluation, DecisionAction, Outcome, Review, Experience, Knowledge, or evolution record.
+
 The canonical lifecycle states remain exactly `proposed`, `accepted`, `in_progress`, `succeeded`,
 `failed`, `partial`, and `outcome_unknown`. Review is orthogonal append-only history; there is no
 `reviewed`, `promoted`, or `learned` state. Outcome or review creation does not create learning;

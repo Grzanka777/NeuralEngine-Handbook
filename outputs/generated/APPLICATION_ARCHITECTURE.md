@@ -95,6 +95,27 @@ Activation and application remain separate immutable records and do not mutate R
 it does not consult activation or application state and adds no automatic selection or
 Run-to-application binding.
 
+## PlaybookRun persistence boundary
+
+`PlaybookRunService.add()` retains ordinary fresh-identity creation. After validating actions, the
+base Playbook, and any explicitly supplied same-Playbook Revision, it constructs a `PlaybookRun`
+whose UUID and timestamp use the model defaults and delegates one save. `neural run add` exposes
+that service behavior. Neither surface accepts a caller-supplied Run UUID or performs semantic
+replay or content deduplication.
+
+The `PlaybookRunRepository` port separately owns exact create-once persistence. It creates an
+absent UUID without replacement, accepts an identical complete same-ID modeled replay without
+rewriting the file, and rejects a different same-ID payload without overwrite. Stored-data and
+identity-mismatch failures are visible; the repository does not repair or skip invalid records.
+This source checkpoint adds no dedicated PlaybookRun repository-error mapping to the CLI.
+
+No Run update, replace, delete, migration, repair, versioning, content-level idempotency, or replay
+service exists. No other record automatically creates a Run. Repository exact replay creates no
+additional Run, Evaluation, DecisionAction, Outcome, Review, Experience, Knowledge, or evolution
+record. Optional `revision_id` semantics are unchanged: the caller supplies it explicitly,
+omission makes no revision claim, and neither activation, application, timestamps, tags, nor
+repository order may infer it.
+
 ## Development evidence orchestration ownership
 
 `DevelopmentEvidenceService` coordinates one specialized local prompt/review/commit bundle. It
@@ -439,6 +460,20 @@ Revision, Run, Evaluation, Proposal, activation, Knowledge-navigation, and Decis
 paths render the repository error message and exit with code 1 without a traceback. No command or
 option was added, and normal success output is unchanged.
 
+## PlaybookRun persistence integrity errors
+
+The repository port exposes `PlaybookRunRepositoryError` with three distinct failures:
+
+- `PlaybookRunPersistenceConflictError` for a same-ID different-payload collision;
+- `PlaybookRunStoredDataError` for malformed or invalid stored Run data or a non-UUID filename
+  stem;
+- `PlaybookRunIdentityMismatchError` when the requested or filename UUID differs from the embedded
+  `PlaybookRun.id`.
+
+These failures preserve the existing file and do not repair, overwrite, skip, or substitute
+stored data. They are repository contract errors, not a new application idempotency taxonomy.
+The committed checkpoint adds no dedicated CLI mapping for this error family.
+
 ---
 
 # Ports
@@ -600,10 +635,19 @@ KnowledgeService does not use `ExperienceRepository` directly; its separate appl
 to either repository port.
 
 `PlaybookRunRepository` remains limited to `save()`, `load_all()`, and `get_by_id()`.
-Optional revision validation, complete and scoped read integrity, and revision-to-Runs filtering
-belong to `PlaybookRunService`. The separate application-facing `PlaybookRunReader` exposes its
-validated `get_by_id()` behavior to downstream services. No revision-specific repository query
-method was added.
+Its `save()` contract is create-once: create an absent Run UUID without replacement, accept an
+identical complete same-ID replay as a metadata-preserving no-op, and reject a different same-ID
+payload as `PlaybookRunPersistenceConflictError` without writing.
+`PlaybookRunRepositoryError` is the base persistence failure category;
+`PlaybookRunStoredDataError` identifies malformed or invalid stored data and non-UUID filename
+stems, while `PlaybookRunIdentityMismatchError` identifies filename/request versus embedded UUID
+disagreement. A missing `get_by_id()` returns `None`.
+
+Optional revision validation, complete and scoped relation integrity, ordinary fresh-ID creation,
+and revision-to-Runs filtering belong to `PlaybookRunService`. The separate application-facing
+`PlaybookRunReader` exposes its validated `get_by_id()` behavior to downstream services. No
+revision-specific repository query method, update/delete surface, or content-level idempotency
+operation is added.
 
 ## Repository return types
 
@@ -825,14 +869,30 @@ Knowledge-to-Experience relation integrity remains separate application composit
 `ExperienceReader` and `ExperienceService.get_by_id()`. No Knowledge or Experience JSON field,
 relation index, or repair-on-read behavior was added.
 
-## PlaybookRun adapter compatibility
+## PlaybookRun adapter create-once integrity
 
-`JsonPlaybookRunRepository` persists the optional `revision_id` through the existing Pydantic
-model serialization and keeps its `save()`, sorted `load_all()`, and `get_by_id()` operations.
-Old JSON without `revision_id` loads with `None` and makes no revision-specific claim; malformed
-UUID data is rejected by domain validation. There is no migration, backfill, inferred value,
-relation query, or adapter-owned ownership check. Revision existence and same-Playbook integrity
-belong to `PlaybookRunService`.
+`JsonPlaybookRunRepository` still stores one JSON file per Run under
+`NeuralPaths.PLAYBOOK_RUNS`, with no schema, path, or repository-method change. It serializes and
+validates the complete candidate, writes it to a repository-owned same-directory temporary file,
+flushes and `fsync`s that file, then uses non-replacing publication. The adapter removes its own
+temporary file after creation, replay, or failure.
+
+An absent UUID path is created once. On collision, the adapter loads and validates the existing
+complete model. Exact same-ID modeled equality succeeds without rewriting the target and preserves
+bytes, inode, size, mtime, and ctime. Any different modeled field raises
+`PlaybookRunPersistenceConflictError` without overwrite. Malformed or invalid stored data raises
+`PlaybookRunStoredDataError`; requested or filename UUID disagreement with embedded
+`PlaybookRun.id` raises `PlaybookRunIdentityMismatchError`.
+
+`get_by_id()` returns `None` only for an absent file; present data is validated and identity
+checked. Sorted `load_all()` validates every filename stem as a UUID and every file as a complete
+identity-matching Run. Invalid records are not skipped. Valid existing JSON remains readable
+without migration. Old JSON without `revision_id` loads with `None` and makes no
+revision-specific claim.
+
+The adapter adds no update/delete/replace operation, migration, repair, transaction, generalized
+crash-recovery guarantee, tamper resistance, or protection from direct filesystem mutation.
+Revision inference and same-Playbook ownership remain in `PlaybookRunService`.
 
 ---
 

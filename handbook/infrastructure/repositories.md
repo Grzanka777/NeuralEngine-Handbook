@@ -138,11 +138,27 @@ Knowledge-to-Experience relation integrity remains separate application composit
 `ExperienceReader` and `ExperienceService.get_by_id()`. No Knowledge or Experience JSON field,
 relation index, or repair-on-read behavior was added.
 
-## PlaybookRun adapter compatibility
+## PlaybookRun adapter create-once integrity
 
-`JsonPlaybookRunRepository` persists the optional `revision_id` through the existing Pydantic
-model serialization and keeps its `save()`, sorted `load_all()`, and `get_by_id()` operations.
-Old JSON without `revision_id` loads with `None` and makes no revision-specific claim; malformed
-UUID data is rejected by domain validation. There is no migration, backfill, inferred value,
-relation query, or adapter-owned ownership check. Revision existence and same-Playbook integrity
-belong to `PlaybookRunService`.
+`JsonPlaybookRunRepository` still stores one JSON file per Run under
+`NeuralPaths.PLAYBOOK_RUNS`, with no schema, path, or repository-method change. It serializes and
+validates the complete candidate, writes it to a repository-owned same-directory temporary file,
+flushes and `fsync`s that file, then uses non-replacing publication. The adapter removes its own
+temporary file after creation, replay, or failure.
+
+An absent UUID path is created once. On collision, the adapter loads and validates the existing
+complete model. Exact same-ID modeled equality succeeds without rewriting the target and preserves
+bytes, inode, size, mtime, and ctime. Any different modeled field raises
+`PlaybookRunPersistenceConflictError` without overwrite. Malformed or invalid stored data raises
+`PlaybookRunStoredDataError`; requested or filename UUID disagreement with embedded
+`PlaybookRun.id` raises `PlaybookRunIdentityMismatchError`.
+
+`get_by_id()` returns `None` only for an absent file; present data is validated and identity
+checked. Sorted `load_all()` validates every filename stem as a UUID and every file as a complete
+identity-matching Run. Invalid records are not skipped. Valid existing JSON remains readable
+without migration. Old JSON without `revision_id` loads with `None` and makes no
+revision-specific claim.
+
+The adapter adds no update/delete/replace operation, migration, repair, transaction, generalized
+crash-recovery guarantee, tamper resistance, or protection from direct filesystem mutation.
+Revision inference and same-Playbook ownership remain in `PlaybookRunService`.
