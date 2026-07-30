@@ -31,6 +31,25 @@ evidence, or persisted candidate. Its optional durable writes use the existing D
 Experience adapters through their application services. Full prompts, reviews, diffs, and
 unrestricted validation output are not copied into repository records.
 
+## Default Neural home paths
+
+All 15 JSON repository adapters accept either an explicit `directory=...` or the immutable
+`NeuralPaths` selected for their dependency graph. With neither supplied, the adapter resolves the
+current process environment at construction time. The no-argument default therefore follows the
+sole public `NEURAL_HOME` selector without freezing an environment-derived path at module import.
+
+The private `RepositoryPath` helper owns only this duplicated adapter path policy. Before default
+I/O it revalidates the configured root and Brain. Before a write it also checks write access.
+Missing individual store directories below an available Brain retain their established
+empty/`None` read behavior and may be created exactly where expected for a write. Under an
+override, creation is non-recursive: an adapter cannot reconstruct a missing selected root or
+Brain.
+
+Explicit `directory=...` injection remains supported without a selected-root guard. It is mutually
+exclusive with `paths=...` and preserves existing test and alternate-infrastructure composition.
+Path selection changes no repository port, serialization, ordering, relation validation,
+create-once integrity, or missing-record contract.
+
 ## Revision application adapter
 
 `JsonPlaybookRevisionApplicationRepository` implements

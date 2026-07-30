@@ -94,6 +94,30 @@ def test_generated_skill_contains_neuralengine_rules(tmp_path: Path) -> None:
     assert "Do not add features" in skill
 
 
+def test_generated_outputs_contain_neural_home_selection_contract(tmp_path: Path) -> None:
+    work_root = _copy_repo(tmp_path)
+    build(work_root)
+
+    handbook = (work_root / "outputs/generated/HANDBOOK.md").read_text(encoding="utf-8")
+    skill = (work_root / "outputs/claude-skill/SKILL.md").read_text(encoding="utf-8")
+    application = (work_root / "outputs/generated/APPLICATION_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+
+    for artifact in (handbook, skill):
+        assert "`NEURAL_HOME` is the sole public selector" in artifact
+        assert 'Path.home() / ".neural"' in artifact
+        assert "no failure path falls back to `~/.neural`" in artifact
+        assert "all 15 default JSON record-store directories" in artifact
+        assert "`neural status` is read-only" in artifact
+        assert "portable deployment is not complete" in artifact
+
+    assert "Explicit `directory=...` injection remains supported" in application
+    assert "every default JSON repository in the graph" in application
+    assert "invalid_configuration" in application
+    assert "brain_unavailable" in application
+
+
 def test_generated_outputs_preserve_run_revision_execution_provenance(
     tmp_path: Path,
 ) -> None:

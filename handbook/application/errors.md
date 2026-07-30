@@ -31,6 +31,30 @@ raise Exception("something failed")
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
 
+## Neural home selection errors
+
+`NeuralHomeError` is the bounded resolver and availability error for `NEURAL_HOME`, default-root,
+and Brain preflight failures. Its stable reasons are:
+
+```text
+invalid_configuration
+home_unavailable
+home_not_directory
+home_inaccessible
+brain_uninitialized
+brain_unavailable
+```
+
+The CLI renders these expected failures as human-readable exit-code-1 messages without a
+traceback. Invalid or unavailable overrides identify the configured or resolved selection and
+state that no fallback was used. Rendering may expose those exact diagnostic paths, but not the
+full environment, unrelated variables, record contents, credentials, mount catalogs, or home
+directory listings. No general JSON error envelope is introduced.
+
+`neural status` uses the same reason boundary but remains read-only and reports the unavailable
+selection as status fields. Normal override commands fail during root/Brain preflight before the
+container or service is invoked.
+
 ## Development evidence errors
 
 The local source adapter distinguishes invalid, missing, insufficient, and unsupported evidence.

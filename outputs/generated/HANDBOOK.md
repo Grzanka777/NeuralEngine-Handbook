@@ -63,6 +63,50 @@ NeuralEngine follows a hexagonal architecture.
 - CLI translates input and renders output.
 - Relationship navigation should be composed in services when it does not belong in persistence.
 
+## Neural home path selection
+
+Source commit `f7bdd1dceb6b848c67b8acf2552ddd18cda51a34` implements one fail-closed
+operational path-selection contract. `NEURAL_HOME` is the sole public selector. When it is absent,
+the selected home remains exactly:
+
+```text
+Path.home() / ".neural"
+```
+
+Presence is distinct from absence. A supplied value must be non-blank, have no leading or trailing
+whitespace, contain neither `~` nor NUL, be absolute, and strictly resolve to an existing,
+accessible directory. A valid directory symlink is accepted only after strict resolution.
+Malformed, missing, dangling, non-directory, inaccessible, or otherwise unavailable overrides
+fail closed. Once `NEURAL_HOME` is present, no failure path falls back to `~/.neural`.
+
+Each resolution returns one immutable `NeuralPaths` value. Its resolved home derives the Brain,
+all 15 default JSON record-store directories, projects, logs, `config.toml`, and `VERSION`.
+`Brain`, `Container`, CLI preflight, and every default JSON repository consume that selected path
+set. Environment-derived defaults are not frozen at module import.
+
+`Brain` distinguishes default initialization from override initialization. Default `neural init`
+may create `Path.home() / ".neural"`. Override init requires the selected root itself to
+pre-exist and be writable; it creates only approved children below that root. It does not
+recursively recreate a vanished selected root. Existing initialization content is preserved by
+the bounded idempotent initialization behavior.
+
+`neural status` is read-only. It reports the resolution source, configured value, resolved home,
+resolved Brain path, home and Brain availability, initialization state, and a bounded failure
+reason. Normal commands preflight the selected root; with an override they also require an
+available initialized Brain before service use. An unavailable override is not represented as an
+empty Brain, and the error explicitly states that no fallback was used.
+
+Explicit `directory=...` repository injection remains supported and bypasses the default
+root-selection guard for that injected directory. Domain models, application-service interfaces,
+repository ports, JSON schemas, and existing default-home data do not change.
+
+This capability is path selection only. It does not migrate, copy, back up, restore, synchronize,
+merge, lock, export, or import a Brain. It provides no mount or device management, filesystem
+identity or health policy, multi-host writer coordination, MCP integration, project partitioning
+or inference, or agent integration. The authoritative 22-entry Brain remains host-local at
+`/home/grzanka/.neural/brain`; `NEURAL_HOME` has not been configured on that host, no portable
+Neural home has been created, and portable deployment is not complete.
+
 ## Revision lifecycle and application boundary
 
 The current end of the domain chain is deliberately split across three immutable records:
@@ -3495,6 +3539,30 @@ raise Exception("something failed")
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
 
+## Neural home selection errors
+
+`NeuralHomeError` is the bounded resolver and availability error for `NEURAL_HOME`, default-root,
+and Brain preflight failures. Its stable reasons are:
+
+```text
+invalid_configuration
+home_unavailable
+home_not_directory
+home_inaccessible
+brain_uninitialized
+brain_unavailable
+```
+
+The CLI renders these expected failures as human-readable exit-code-1 messages without a
+traceback. Invalid or unavailable overrides identify the configured or resolved selection and
+state that no fallback was used. Rendering may expose those exact diagnostic paths, but not the
+full environment, unrelated variables, record contents, credentials, mount catalogs, or home
+directory listings. No general JSON error envelope is introduced.
+
+`neural status` uses the same reason boundary but remains read-only and reports the unavailable
+selection as status fields. Normal override commands fail during root/Brain preflight before the
+container or service is invoked.
+
 ## Development evidence errors
 
 The local source adapter distinguishes invalid, missing, insufficient, and unsupported evidence.
@@ -3855,6 +3923,25 @@ evidence, or persisted candidate. Its optional durable writes use the existing D
 Experience adapters through their application services. Full prompts, reviews, diffs, and
 unrestricted validation output are not copied into repository records.
 
+## Default Neural home paths
+
+All 15 JSON repository adapters accept either an explicit `directory=...` or the immutable
+`NeuralPaths` selected for their dependency graph. With neither supplied, the adapter resolves the
+current process environment at construction time. The no-argument default therefore follows the
+sole public `NEURAL_HOME` selector without freezing an environment-derived path at module import.
+
+The private `RepositoryPath` helper owns only this duplicated adapter path policy. Before default
+I/O it revalidates the configured root and Brain. Before a write it also checks write access.
+Missing individual store directories below an available Brain retain their established
+empty/`None` read behavior and may be created exactly where expected for a write. Under an
+override, creation is non-recursive: an adapter cannot reconstruct a missing selected root or
+Brain.
+
+Explicit `directory=...` injection remains supported without a selected-root guard. It is mutually
+exclusive with `paths=...` and preserves existing test and alternate-infrastructure composition.
+Path selection changes no repository port, serialization, ordering, relation validation,
+create-once integrity, or missing-record contract.
+
 ## Revision application adapter
 
 `JsonPlaybookRevisionApplicationRepository` implements
@@ -4034,6 +4121,18 @@ repository = container.get("revision_repository")
 ## Change policy
 
 Any container or registration change is architectural work owned by Codex.
+
+## Neural home propagation
+
+Each container service graph resolves one immutable `NeuralPaths` value and passes that same value
+to every default JSON repository in the graph. Nested container composition is scoped with the
+already resolved value, so one graph cannot mix default and override roots or independently
+resolved paths. `Brain` and CLI preflight consume the same path type.
+
+The container does not cache an environment-derived path globally. Independent top-level
+resolution may observe a later process-environment change, while a graph already under
+construction remains internally consistent. Explicit repository `directory=...` injection
+continues to be available outside default container composition.
 
 The current revision application foundation is wired through
 `Container.playbook_revision_application_repository()` and

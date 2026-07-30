@@ -44,6 +44,18 @@ repository = container.get("revision_repository")
 
 Any container or registration change is architectural work owned by Codex.
 
+## Neural home propagation
+
+Each container service graph resolves one immutable `NeuralPaths` value and passes that same value
+to every default JSON repository in the graph. Nested container composition is scoped with the
+already resolved value, so one graph cannot mix default and override roots or independently
+resolved paths. `Brain` and CLI preflight consume the same path type.
+
+The container does not cache an environment-derived path globally. Independent top-level
+resolution may observe a later process-environment change, while a graph already under
+construction remains internally consistent. Explicit repository `directory=...` injection
+continues to be available outside default container composition.
+
 The current revision application foundation is wired through
 `Container.playbook_revision_application_repository()` and
 `Container.playbook_revision_application_service()`. The service receives its repositories and a

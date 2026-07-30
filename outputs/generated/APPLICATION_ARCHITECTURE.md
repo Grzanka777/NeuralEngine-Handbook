@@ -402,6 +402,30 @@ raise Exception("something failed")
 - Infrastructure failures are translated at adapter/application boundaries.
 - CLI maps application errors to user-facing messages and exit codes.
 
+## Neural home selection errors
+
+`NeuralHomeError` is the bounded resolver and availability error for `NEURAL_HOME`, default-root,
+and Brain preflight failures. Its stable reasons are:
+
+```text
+invalid_configuration
+home_unavailable
+home_not_directory
+home_inaccessible
+brain_uninitialized
+brain_unavailable
+```
+
+The CLI renders these expected failures as human-readable exit-code-1 messages without a
+traceback. Invalid or unavailable overrides identify the configured or resolved selection and
+state that no fallback was used. Rendering may expose those exact diagnostic paths, but not the
+full environment, unrelated variables, record contents, credentials, mount catalogs, or home
+directory listings. No general JSON error envelope is introduced.
+
+`neural status` uses the same reason boundary but remains read-only and reports the unavailable
+selection as status fields. Normal override commands fail during root/Brain preflight before the
+container or service is invoked.
+
 ## Development evidence errors
 
 The local source adapter distinguishes invalid, missing, insufficient, and unsupported evidence.
@@ -762,6 +786,25 @@ evidence, or persisted candidate. Its optional durable writes use the existing D
 Experience adapters through their application services. Full prompts, reviews, diffs, and
 unrestricted validation output are not copied into repository records.
 
+## Default Neural home paths
+
+All 15 JSON repository adapters accept either an explicit `directory=...` or the immutable
+`NeuralPaths` selected for their dependency graph. With neither supplied, the adapter resolves the
+current process environment at construction time. The no-argument default therefore follows the
+sole public `NEURAL_HOME` selector without freezing an environment-derived path at module import.
+
+The private `RepositoryPath` helper owns only this duplicated adapter path policy. Before default
+I/O it revalidates the configured root and Brain. Before a write it also checks write access.
+Missing individual store directories below an available Brain retain their established
+empty/`None` read behavior and may be created exactly where expected for a write. Under an
+override, creation is non-recursive: an adapter cannot reconstruct a missing selected root or
+Brain.
+
+Explicit `directory=...` injection remains supported without a selected-root guard. It is mutually
+exclusive with `paths=...` and preserves existing test and alternate-infrastructure composition.
+Path selection changes no repository port, serialization, ordering, relation validation,
+create-once integrity, or missing-record contract.
+
 ## Revision application adapter
 
 `JsonPlaybookRevisionApplicationRepository` implements
@@ -941,6 +984,18 @@ repository = container.get("revision_repository")
 ## Change policy
 
 Any container or registration change is architectural work owned by Codex.
+
+## Neural home propagation
+
+Each container service graph resolves one immutable `NeuralPaths` value and passes that same value
+to every default JSON repository in the graph. Nested container composition is scoped with the
+already resolved value, so one graph cannot mix default and override roots or independently
+resolved paths. `Brain` and CLI preflight consume the same path type.
+
+The container does not cache an environment-derived path globally. Independent top-level
+resolution may observe a later process-environment change, while a graph already under
+construction remains internally consistent. Explicit repository `directory=...` injection
+continues to be available outside default container composition.
 
 The current revision application foundation is wired through
 `Container.playbook_revision_application_repository()` and
