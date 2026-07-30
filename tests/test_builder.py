@@ -111,6 +111,15 @@ def test_generated_outputs_contain_neural_home_selection_contract(tmp_path: Path
         assert "all 15 default JSON record-store directories" in artifact
         assert "`neural status` is read-only" in artifact
         assert "portable deployment is not complete" in artifact
+        assert (
+            "`neural doctor` is the bounded, intrinsically read-only readiness companion"
+            in artifact
+        )
+        assert "Selection`, `Home`, `Brain`, `Stores`, `Integrity`, `Manifest`," in artifact
+        assert "A `READY` report exits" in artifact
+        assert "`NOT READY` exits `1`" in artifact
+        assert "NEURAL_HOME=/run/media/grzanka/777/NeuralEngine-State neural doctor" in artifact
+        assert "does not repair, initialize, migrate, back up, mount" in artifact
 
     assert "Explicit `directory=...` injection remains supported" in application
     assert "every default JSON repository in the graph" in application
