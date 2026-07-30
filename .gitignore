@@ -7,3 +7,5 @@ dist/
 build/
 *.egg-info/
 outputs/*.zip
+
+.agent-work/
