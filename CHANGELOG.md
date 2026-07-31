@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Fixed package/module version consistency (all surfaces now report 0.4.1).
+- Documented package-version/Brain-format independence contract.
+
+## 0.4.0
+
 ## 0.3.0
 
 - Added application service and error-handling guidance.

@@ -1,6 +1,8 @@
+import importlib.metadata
 from pathlib import Path
 import shutil
 
+import neuralengine_handbook
 from neuralengine_handbook.builder import build
 
 
@@ -530,3 +532,10 @@ def test_generated_outputs_preserve_knowledge_experience_integrity_boundary(
     assert "per stored relation, including duplicates" in application
     assert "does not inject a raw" in application
     assert "No repository port changed for this boundary" in application
+
+
+def test_package_and_module_version_consistency() -> None:
+    dist_version = importlib.metadata.version("neuralengine-handbook")
+    assert dist_version == "0.4.1"
+    assert neuralengine_handbook.__version__ == "0.4.1"
+    assert dist_version == neuralengine_handbook.__version__

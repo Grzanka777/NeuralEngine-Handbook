@@ -1,6 +1,6 @@
 [project]
 name = "neuralengine-handbook"
-version = "0.4.0"
+version = "0.4.1"
 description = "Single source of truth and artifact generator for NeuralEngine engineering rules."
 readme = "README.md"
 requires-python = ">=3.12"
