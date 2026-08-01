@@ -9,7 +9,7 @@ repository—not a separate product.
 
 ## Scope
 
-- Four authoritative shared workflow files.
+- Five authoritative shared workflow files (Verification Framework added in v0.2.0).
 - One platform variant (OpenCode) derived from the user's current, working
   OpenCode configuration.
 - Placeholder directories for future Codex, Claude Code, and Antigravity
@@ -18,15 +18,27 @@ repository—not a separate product.
 This pack does not modify NeuralEngine runtime behavior, Brain persistence,
 schemas, migrations, user data, or public APIs.
 
+## v0.3.0 changes
+
+v0.3.0 enforces Verification Framework permissions on the OpenCode reviewer:
+
+- Eight narrow read-only shell permissions added: `find`, `test`, `wc`, `sha256sum`, `diff`, `cmp`, `grep`, `sed`.
+- The `verification` skill is now required by the reviewer.
+- The reviewer remains unable to edit files, delegate tasks, perform Git writes, run destructive commands, or write to the Brain.
+- No dedicated verifier agent exists.
+- Active OpenCode controlled-copy equality was verified after explicit synchronization.
+- Future platforms remain placeholders.
+
 ## Status
 
-**Agent Pack v0.2.0 — Release approved**
+**Agent Pack v0.3.0 — Release prepared**
 
 | Gateway | Result |
 |---|---|
+| Repository validation | PASS (16 tests) |
 | Quick Verification | PASS |
-| Standard Verification | PASS |
-| Certification | CERTIFIED |
+| Standard Verification | PASS WITH NOTES |
+| Certification | Pending |
 | OpenCode | Supported |
 | Codex | Placeholder (not implemented) |
 | Claude Code | Placeholder (not implemented) |
@@ -41,6 +53,7 @@ Review artifacts:
 - `.agent-work/reviews/review-decide-verification-framework-architecture.md`
 - `.agent-work/reviews/review-implement-verification-shared-contract-v0.2.md`
 - `.agent-work/reviews/review-implement-opencode-quick-verification-v0.2.md`
+- `.agent-work/reviews/review-agent-pack-v0.3-reviewer-verification-permissions.md`
 
 Certification artifacts:
 
@@ -95,6 +108,8 @@ manually into the target agent configuration directory.
 - [MANIFEST.md](MANIFEST.md) — Shared-to-platform mapping and update rules.
 - [CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md) — Platform capability matrix (OpenCode + Codex CLI).
 - [DECISIONS/](DECISIONS/) — Architecture Decision Records (ADRs).
+- [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md) — v0.3.0 release notes.
+- [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md) — v0.2.0 release notes.
 
 Shared contracts:
 
