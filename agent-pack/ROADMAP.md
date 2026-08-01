@@ -32,7 +32,7 @@ Architecture documentation deferred to v0.1.1 (this milestone).
 
 ## v0.1.1 — Architecture and Definition of Done
 
-**Status: In progress**
+**Status: Completed**
 
 Deliverables:
 
@@ -73,18 +73,47 @@ for verification integration.
 
 ---
 
-## v0.3.0 — Installation and workstation rollout
+## v0.3.0 — Reviewer verification permission enforcement
 
-Planned deliverables:
+**Status: Completed.**
 
-- Deterministic OpenCode installation procedure (step-by-step, exact paths).
-- Backup procedure for pre-existing configuration.
-- Rollback procedure using backup.
-- Home workstation: installation, verification, and certification.
-- Office workstation: installation, verification, and certification.
-- Updated README with installation section.
+The original v0.3.0 roadmap scope (installation and workstation rollout) has
+been deferred. A smaller, prerequisite milestone was identified: the reviewer
+agent could not run Quick Verification without manual permission prompts for
+7 of 14 required commands. The permission-enforcement gap became the v0.3.0
+scope.
 
-No automation. Installation remains manual and explicit.
+Implemented:
+
+- Eight narrow read-only shell permissions added to the OpenCode reviewer:
+  `find`, `test`, `wc`, `sha256sum`, `diff`, `cmp`, `grep`, `sed`.
+- `verification` skill added to reviewer required skills.
+- Active OpenCode controlled-copy synchronized separately and verified by
+  SHA-256 equality.
+- Quick Verification runs through the reviewer without permission prompts.
+- All existing deny boundaries preserved (edit: deny, task: deny, Git writes
+  denied, destructive commands denied, `sed -i*` denied).
+- No dedicated verifier agent was introduced.
+
+Architecture Decision Record:
+[DECISIONS/release-v0.3.0.md](DECISIONS/release-v0.3.0.md)
+
+Implementation review:
+`.agent-work/reviews/review-agent-pack-v0.3-reviewer-verification-permissions.md`
+(READY FOR REVIEW)
+
+No shared-contract changes. No new platform adapters.
+
+### Deferred from original v0.3.0 scope
+
+The following items from the original v0.3.0 roadmap (Installation and
+workstation rollout) are deferred to a future milestone:
+
+- Deterministic OpenCode installation procedure.
+- Backup and rollback procedure.
+- Home workstation installation, verification, and certification.
+- Office workstation installation, verification, and certification.
+- Installation documentation in README.
 
 ---
 

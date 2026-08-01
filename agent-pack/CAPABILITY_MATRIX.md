@@ -1,4 +1,4 @@
-# Agent Pack v0.2.0 Capability Matrix
+# Agent Pack v0.3.0 Capability Matrix
 
 ## Legend
 
@@ -22,7 +22,7 @@
 | **Repository instructions** | SUPPORTED — `AGENTS.md`, `CODEX.md`, `VISION.md`, `CONTEXT.md`, `pyproject.toml` awareness built into agent rules | NOT YET ASSESSED |
 | **NeuralEngine CLI** | SUPPORTED — `neural status` and `neural search` available and used in all reviews | NOT YET ASSESSED |
 | **Review** | SUPPORTED — `repository-review` skill, reviewer agent with read-only permissions, formal review format with verdict/checkpoint/validation/scope/findings | NOT YET ASSESSED |
-| **Verification** | SUPPORTED — `verification` skill: Quick (PASS/FAIL), Standard (PASS/PASS WITH NOTES/BLOCKED/FAIL), orchestrator prompt | NOT YET ASSESSED |
+| **Verification** | SUPPORTED — reviewer agent with `verification` skill and enforced read-only command permissions (8 additional allow patterns: find, test, wc, sha256sum, diff, cmp, grep, sed). Quick Verification runs without permission prompts. | NOT YET ASSESSED |
 | **Certification** | SUPPORTED — Certification Report template, 3 verdicts (CERTIFIED/CERTIFIED WITH NOTES/NOT CERTIFIED), collision-safe naming, `.agent-work/certifications/` convention | NOT YET ASSESSED |
 | **Model selection** | SUPPORTED — Model configured in OpenCode runtime. Agent Pack is model-agnostic (DeepSeek V4 Pro Max, GPT-5.6 Sol Medium, others) | NOT YET ASSESSED |
 | **Non-interactive execution** | SUPPORTED WITH LIMITATIONS — Bash commands execute non-interactively. Human confirmation required only for restricted operations per permission model. | NOT YET ASSESSED |
