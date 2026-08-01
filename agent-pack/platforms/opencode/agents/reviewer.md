@@ -26,7 +26,6 @@ permission:
     "git rev-parse*": allow
     "git merge-base*": allow
     "git ls-files*": allow
-    "uv run ruff format --check *": allow
     "uv run ruff check *": allow
     "uv run mypy *": allow
     "uv run pytest *": allow
@@ -47,6 +46,7 @@ permission:
     "git switch*": deny
     "uv run ruff check --fix*": deny
     "uv run ruff format *": deny
+    "uv run ruff format --check *": allow
     "rm *": deny
     "mv *": deny
     "cp *": deny
