@@ -31,14 +31,14 @@ v0.3.0 enforces Verification Framework permissions on the OpenCode reviewer:
 
 ## Status
 
-**Agent Pack v0.3.0 — Release prepared**
+**Agent Pack v0.3.0 — Released**
 
 | Gateway | Result |
 |---|---|
 | Repository validation | PASS (16 tests) |
 | Quick Verification | PASS |
 | Standard Verification | PASS WITH NOTES |
-| Certification | Pending |
+| Certification | CERTIFIED WITH NOTES |
 | OpenCode | Supported |
 | Codex | Placeholder (not implemented) |
 | Claude Code | Placeholder (not implemented) |
