@@ -2301,7 +2301,7 @@ distinct Knowledge value.
 
 `Knowledge` → `Playbook`
 
-## Explicit capture and navigation
+## Explicit capture, search, and navigation
 
 Knowledge creation remains available through:
 
@@ -2314,6 +2314,33 @@ Both commands store caller-supplied statement, rationale, confidence, Experience
 They do not infer or automatically promote Knowledge. `neural experience knowledge
 EXPERIENCE_UUID` is read-only navigation through `KnowledgeService.list_for_experience()` and does
 not create Knowledge.
+
+### Knowledge search
+
+`neural knowledge search QUERY` performs a read-only content search over stored Knowledge. It
+does not write to the Brain.
+
+Search contract:
+
+- matches Knowledge `statement`,
+- matches Knowledge `rationale`,
+- uses case-insensitive substring matching,
+- matches either field (OR logic),
+- preserves repository load order in results,
+- validates Knowledge-to-Experience integrity before returning any results,
+- prints `No matching knowledge found.` when no Knowledge matches the query,
+- renders each matching Knowledge using the existing Knowledge summary.
+
+Explicit non-capabilities:
+
+- no tag search,
+- no fuzzy matching,
+- no ranking,
+- no pagination,
+- no JSON output,
+- no cross-record-type search.
+
+The top-level `neural search` Observation search remains unchanged.
 
 ## Validated Experience boundary
 
