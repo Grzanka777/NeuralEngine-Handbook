@@ -1,4 +1,4 @@
-# Agent Pack v0.3.0 Release Notes
+# Agent Pack v0.3.0 — Released
 
 ## Highlights
 
@@ -20,7 +20,8 @@ Verification commands without manual `ask` prompts. v0.3.0 closes that gap.
   `find *`, `test *`, `wc *`, `sha256sum *`, `diff *`, `cmp *`, `grep *`,
   `sed *`.
 - `verification` added to the reviewer's required skills list.
-- No other files, agents, skills, or configuration changed.
+- No additional runtime agents, skills, shared contracts, or platform adapters
+  were introduced.
 
 ### What did not change
 
@@ -66,6 +67,23 @@ The reviewer's read-only boundary is preserved and strengthened:
 | Brain writes | Prohibited by skill contract |
 | Unrestricted bash (`"*": allow`) | Absent |
 
+## Permission-order correction
+
+The final permission rule order in the reviewer agent is:
+
+```
+"uv run ruff format *": deny
+"uv run ruff format --check *": allow
+```
+
+OpenCode uses last-match-wins for these overlapping patterns:
+
+- A bare `uv run ruff format .` matches only the deny pattern — **denied**.
+- A read-only `uv run ruff format --check .` matches both patterns; the last
+  match wins — **allowed**.
+- Mutation-capable `ruff format` remains denied.
+- Runtime test through the Reviewer completed without a permission prompt.
+
 ## Runtime verification
 
 After explicit active controlled-copy synchronization, Quick Verification runs
@@ -84,9 +102,12 @@ cover all commands required by:
 ## Compatibility
 
 - Base release: Agent Pack v0.2.0.
-- Release checkpoint before release preparation: `22f759237215dd57981d37a76c29100447c18ae4`.
 - Implementation commit: `674c8d6`.
-- Merge commit: `22f7592`.
+- Permission-enforcement merge commit: `22f7592`.
+- Release preparation commit: `72ed04b`.
+- Permission-order fix: `b4bcd57`.
+- Certification checkpoint: `b4bcd577528115738eb131eb6d794064142c42a0`.
+- Release merge checkpoint: `6ca6daa87de2c7374c48bbc7f17d6184da17c12f`.
 - Shared contracts unchanged from v0.2.0.
 - No new shared contracts, platform adapters, or MANIFEST entries.
 - Quick Verification PASS at checkpoint `22f759237215dd57981d37a76c29100447c18ae4`.
@@ -108,7 +129,14 @@ cover all commands required by:
 - Installation and workstation rollout (originally planned for v0.3.0) are
   deferred to a future milestone.
 - Certification remains explicit and is not part of routine Quick Verification.
-- Certification not yet executed for v0.3.0.
+- Certification: CERTIFIED WITH NOTES at checkpoint
+  b4bcd577528115738eb131eb6d794064142c42a0.
+  - Verifier: OpenCode reviewer agent
+  - Repository validation: PASS
+  - Quick Verification: PASS
+  - Exact-copy equality: 8/8 PASS
+  - Standard Verification: PASS WITH NOTES
+  - Certification: CERTIFIED WITH NOTES
 
 ## Upgrade notes
 
@@ -117,7 +145,7 @@ files are unchanged (SHA-256 verified against v0.2.0 certification).
 
 To upgrade:
 
-1. Pull the latest `agent-pack/` content from branch `release/agent-pack-v0.3.0`.
+1. Check out the `agent-pack-v0.3.0` tag or pull the current `main` branch.
 2. Copy the updated reviewer to `~/.config/opencode/agents/reviewer.md`:
    ```text
    cp agent-pack/platforms/opencode/agents/reviewer.md /home/grzanka/.config/opencode/agents/reviewer.md
