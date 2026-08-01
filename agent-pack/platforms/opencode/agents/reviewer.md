@@ -30,6 +30,14 @@ permission:
     "uv run ruff check *": allow
     "uv run mypy *": allow
     "uv run pytest *": allow
+    "find *": allow
+    "test *": allow
+    "wc *": allow
+    "sha256sum *": allow
+    "diff *": allow
+    "cmp *": allow
+    "grep *": allow
+    "sed *": allow
     "git add*": deny
     "git commit*": deny
     "git push*": deny
@@ -63,6 +71,7 @@ Always use when applicable:
 * python-project-validation
 * neuralengine
 * arch-linux-diagnostics
+* verification
 
 ## Required workflow
 
