@@ -32,7 +32,8 @@ NeuralEngine-Handbook/
 │   │   ├── repository-review.md
 │   │   ├── python-validation.md
 │   │   ├── arch-linux.md
-│   │   └── verification.md
+│   │   ├── verification.md
+│   │   └── task-execution-policy.md
 │   └── platforms/                  # Platform adapters (controlled copies)
 │       ├── opencode/               # OpenCode reference implementation
 │       │   ├── opencode.json
@@ -67,7 +68,7 @@ The Architecture Freeze for v1.0 is recorded at:
 agent-pack/DECISIONS/architecture-freeze-v1.0.md
 ```
 
-It freezes the five shared contracts, the verification hierarchy, the Adapter
+It freezes the shared contracts, the verification hierarchy, the Adapter
 API, the release workflow, and the v1.0 platform scope (OpenCode + Codex CLI).
 Changes to frozen elements require an Architecture Change Proposal.
 
@@ -136,6 +137,7 @@ capability model.
 | `shared/python-validation.md` | python-project-validation skill | v0.1.0 |
 | `shared/arch-linux.md` | arch-linux-diagnostics skill | v0.1.0 |
 | `shared/verification.md` | Verification Framework (new in v0.2.0) | v0.2.0 |
+| `shared/task-execution-policy.md` | Agent Pack execution-policy authority (new in v0.4.0) | v0.4.0 |
 
 Contracts are owned by their originating source. The Agent Pack copies them;
 it does not author them independently.
@@ -187,7 +189,7 @@ it does not author them independently.
 
 - **v0.x**: No compatibility guarantee. Contracts, mappings, and platform
   support may change without notice.
-- **v1.0**: The four shared contracts are stable. A contract may be extended
+- **v1.0**: The shared contracts are stable. A contract may be extended
   with backward-compatible additions but not removed or substantively rewritten
   without a major version increment.
 - Platform-specific configuration files are versioned with the pack but are

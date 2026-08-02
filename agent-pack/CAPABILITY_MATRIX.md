@@ -14,11 +14,11 @@
 
 | Capability | OpenCode | Codex CLI |
 |---|---|---|
-| **Agents / roles** | SUPPORTED — `arch-data-engineer` (primary, full capabilities), `reviewer` (read-only, restricted permissions) | NOT YET ASSESSED |
+| **Agents / roles** | SUPPORTED — `builder` (generic implementation), `arch-data-engineer` (specialist, scoped permissions), `reviewer` (read-only, restricted permissions) | NOT YET ASSESSED |
 | **Skills / contracts** | SUPPORTED — 5 skills: neuralengine, repository-review, python-project-validation, arch-linux-diagnostics, verification | NOT YET ASSESSED |
 | **Global instructions** | SUPPORTED — `neuralengine-usage.md` loaded via `opencode.json` instructions array | NOT YET ASSESSED |
 | **Permissions** | SUPPORTED — Agent-level permission blocks with allow/deny/ask for edit, bash, task, tools. Reviewer enforces read-only. | NOT YET ASSESSED |
-| **Shell execution** | SUPPORTED — Unrestricted bash for `arch-data-engineer`. Restricted allowlist for `reviewer`. | NOT YET ASSESSED |
+| **Shell execution** | SUPPORTED — Scoped bash allowlist for `arch-data-engineer` (read-only diagnostics and validation; commit, push, destructive Git/filesystem/partitioning commands, and Ruff auto-fix denied). Restricted allowlist for `reviewer`. | NOT YET ASSESSED |
 | **Repository instructions** | SUPPORTED — `AGENTS.md`, `CODEX.md`, `VISION.md`, `CONTEXT.md`, `pyproject.toml` awareness built into agent rules | NOT YET ASSESSED |
 | **NeuralEngine CLI** | SUPPORTED — `neural status` and `neural search` available and used in all reviews | NOT YET ASSESSED |
 | **Review** | SUPPORTED — `repository-review` skill, reviewer agent with read-only permissions, formal review format with verdict/checkpoint/validation/scope/findings | NOT YET ASSESSED |
@@ -52,9 +52,12 @@ The following rules apply to the Codex assessment:
 OpenCode capabilities are derived from:
 
 - `platforms/opencode/opencode.json` — global instructions, default agent.
-- `platforms/opencode/agents/arch-data-engineer.md` — primary agent with full
-  capabilities, bash access, NeuralEngine awareness, repository awareness,
+- `platforms/opencode/agents/arch-data-engineer.md` — primary agent with scoped
+  permissions, bash allowlist, NeuralEngine awareness, repository awareness,
   validation workflow.
+- `platforms/opencode/agents/builder.md` — generic builder agent with scoped
+  edit access, commit/push denial, task delegation denial, and validation
+  command allowlist.
 - `platforms/opencode/agents/reviewer.md` — read-only reviewer agent with
   explicit deny rules for destructive operations.
 - `platforms/opencode/skills/` — 5 skill files implementing shared contracts.

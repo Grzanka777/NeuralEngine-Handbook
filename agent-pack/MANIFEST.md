@@ -9,11 +9,13 @@
 | `shared/python-validation.md` | python-project-validation skill |
 | `shared/arch-linux.md` | arch-linux-diagnostics skill |
 | `shared/verification.md` | verification skill (Quick, Standard, and Certification implemented) |
+| `shared/task-execution-policy.md` | no platform copy (vocabulary contract, deferred consumption) |
 
 ## Platform-specific files (no shared equivalent)
 
 - `opencode.json`
 - `agents/arch-data-engineer.md`
+- `agents/builder.md`
 - `agents/reviewer.md`
 
 These files are platform-specific configuration artifacts. They have no
