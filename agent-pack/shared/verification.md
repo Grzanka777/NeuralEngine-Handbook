@@ -136,6 +136,13 @@ Standard Verification is:
      rules present without material omission.
    - [repository-review.md](repository-review.md): required review format
      sections present.
+   - [task-execution-policy.md](task-execution-policy.md): all 11 required
+     sections present (Purpose, Scope, Task classes, Execution profiles, Role
+     separation, Runtime substitution invariant, Supplied-routing validation,
+     Delegated-prompt minimum, Explicit exclusions, Relationship to existing
+     contracts, Compliance requirements). No concrete model identifiers appear.
+     Cross-reference consistency with repository-review.md §Risk classification
+     confirmed. No silent safeguard weakening is permitted.
    - Other shared contracts: core sections present and complete.
 
 2. **Cross-document consistency** — no contradiction between:

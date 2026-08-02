@@ -9,7 +9,7 @@ repository—not a separate product.
 
 ## Scope
 
-- Five authoritative shared workflow files (Verification Framework added in v0.2.0).
+- Six authoritative shared workflow files (Verification Framework added in v0.2.0, Task Execution Policy added in v0.4.0).
 - One platform variant (OpenCode) derived from the user's current, working
   OpenCode configuration.
 - Placeholder directories for future Codex, Claude Code, and Antigravity
@@ -59,7 +59,34 @@ Certification artifacts:
 
 - `.agent-work/certifications/certification-agent-pack-v0.2.0-2026-08-01.md`
 
-## Five authoritative shared contracts
+## OpenCode agents
+
+Three first-class OpenCode agents with distinct roles:
+
+| Agent | Role | Write access | File |
+|---|---|---|---|
+| **builder** | Generic implementation | Edit allowed, commit/push denied | `agents/builder.md` |
+| **arch-data-engineer** | Data architecture and persistence specialization | Edit allowed, commit/push denied, scoped bash allowlist | `agents/arch-data-engineer.md` |
+| **reviewer** | Independent read-only review | Denied | `agents/reviewer.md` |
+
+### Selection policy
+
+```text
+generic implementation
+→ builder
+
+data architecture / persistence / migration specialization
+→ arch-data-engineer
+
+independent read-only review
+→ reviewer
+```
+
+`arch-data-engineer` remains the default agent for backward compatibility.
+`builder` is the recommended agent for generic implementation tasks that do not
+require specialist domain knowledge.
+
+## Six authoritative shared contracts
 
 | File | Source |
 |---|---|
@@ -68,6 +95,7 @@ Certification artifacts:
 | `shared/python-validation.md` | python-project-validation skill body |
 | `shared/arch-linux.md` | arch-linux-diagnostics skill body |
 | `shared/verification.md` | Verification Framework (new in v0.2.0) |
+| `shared/task-execution-policy.md` | Agent Pack execution-policy authority (new in v0.4.0) |
 
 ## Controlled-copy model
 
@@ -100,6 +128,45 @@ preview and explicit user authorization under the global NeuralEngine policy.
 No automatic installation is performed. Platform files must be copied
 manually into the target agent configuration directory.
 
+### Controlled manual copy
+
+The authoritative installation path for OpenCode agents is manual controlled copy
+with safeguards (per [ARCHITECTURE.md](ARCHITECTURE.md) §Installation and onboarding boundary).
+
+**Target directory**: `~/.config/opencode/agents/`
+
+**Installation procedure** (for each agent file):
+
+```bash
+# 1. Preview (dry run) — show what would change
+diff <(sha256sum agent-pack/platforms/opencode/agents/builder.md) \
+     <(sha256sum ~/.config/opencode/agents/builder.md 2>/dev/null || echo "not installed")
+
+# 2. Back up existing file if present
+[ -f ~/.config/opencode/agents/builder.md ] && \
+    cp ~/.config/opencode/agents/builder.md ~/.config/opencode/agents/builder.md.backup
+
+# 3. Copy agent file
+cp agent-pack/platforms/opencode/agents/builder.md ~/.config/opencode/agents/builder.md
+
+# 4. Verify equality
+sha256sum agent-pack/platforms/opencode/agents/builder.md \
+          ~/.config/opencode/agents/builder.md
+```
+
+**Rollback** (if needed):
+
+```bash
+cp ~/.config/opencode/agents/builder.md.backup ~/.config/opencode/agents/builder.md
+```
+
+**Verification**: Run `agent-pack` validation after installation to confirm
+structural integrity.
+
+The controlled copy procedure is verified by `tests/test_agent_rollout.py`
+(17 tests covering clean install, overwrite, backup, rollback, idempotency,
+equality, frontmatter integrity, model-name absence, and agent coexistence).
+
 ## Navigation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Authoritative architecture document (v1.0 Architecture Freeze applied).
@@ -118,10 +185,14 @@ Shared contracts:
 - [shared/python-validation.md](shared/python-validation.md) — Python project validation.
 - [shared/arch-linux.md](shared/arch-linux.md) — Arch Linux diagnostics.
 - [shared/verification.md](shared/verification.md) — Agent Pack structural integrity verification (v0.2.0).
+- [shared/task-execution-policy.md](shared/task-execution-policy.md) — Task classes, execution profiles, role separation, and execution-policy invariants (v0.4.0).
 
 OpenCode platform implementation:
 
 - [platforms/opencode/](platforms/opencode/) — OpenCode adapter and skills.
+- [platforms/opencode/agents/builder.md](platforms/opencode/agents/builder.md) — Generic builder agent (new in v0.4.0).
+- [platforms/opencode/agents/arch-data-engineer.md](platforms/opencode/agents/arch-data-engineer.md) — Specialist implementation agent.
+- [platforms/opencode/agents/reviewer.md](platforms/opencode/agents/reviewer.md) — Read-only independent reviewer.
 - [platforms/opencode/skills/verification/SKILL.md](platforms/opencode/skills/verification/SKILL.md) — Verification skill: Quick, Standard, and Certification (v0.2.0).
 - [platforms/opencode/verification-permissions.md](platforms/opencode/verification-permissions.md) — Verification permission requirements.
 - [../.agent-work/prompts/verify-agent-pack-v0.2.md](../.agent-work/prompts/verify-agent-pack-v0.2.md) — Self-verification orchestrator prompt.

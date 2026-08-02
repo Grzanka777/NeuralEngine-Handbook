@@ -21,7 +21,7 @@ artifacts.
 
 | # | Criterion | Evidence |
 |---|---|---|
-| S1 | Exactly five authoritative shared contracts exist (v0.2.0+) | `shared/neuralengine.md`, `shared/repository-review.md`, `shared/python-validation.md`, `shared/arch-linux.md`, `shared/verification.md` present |
+| S1 | Exactly six authoritative shared contracts exist (v0.4.0+) | `shared/neuralengine.md`, `shared/repository-review.md`, `shared/python-validation.md`, `shared/arch-linux.md`, `shared/verification.md`, `shared/task-execution-policy.md` present |
 | S2 | Each contract has a defined purpose, scope, and exclusions | Content review of each contract |
 | S3 | Each contract defines workflow, required evidence, and failure criteria where applicable | Content review of each contract |
 | S4 | `shared/neuralengine.md` preserves all mandatory NeuralEngine rules without material omission | NeuralEngine audit checklist confirmed |

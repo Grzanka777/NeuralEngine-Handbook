@@ -28,8 +28,10 @@ The following commands are required for Quick Verification:
 
 ## Currently allowed commands (OpenCode `arch-data-engineer`)
 
-The `arch-data-engineer` agent has unrestricted bash access. All commands
-listed above are implicitly allowed.
+The `arch-data-engineer` agent has a scoped bash allowlist. Read-only
+diagnostics and validation commands (including those listed above) are
+explicitly allowed; commit, push, destructive Git/filesystem/partitioning
+commands, and Ruff auto-fix are denied.
 
 The `reviewer` agent has an explicit allowlist. The following commands from
 the required set are **currently allowed** for the reviewer:
