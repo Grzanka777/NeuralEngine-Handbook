@@ -42,7 +42,7 @@ contract and introduces the generic builder agent:
 
 | Gateway | Result |
 |---|---|
-| Repository validation | PASS (64 tests) |
+| Repository validation | PASS (78 tests) |
 | Builder agent implementation review | PASS |
 | Task Execution Policy foundation review | READY FOR INDEPENDENT REVIEW |
 | ACP independent review | PASS |
