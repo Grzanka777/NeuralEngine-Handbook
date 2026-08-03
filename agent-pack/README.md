@@ -18,27 +18,34 @@ repository—not a separate product.
 This pack does not modify NeuralEngine runtime behavior, Brain persistence,
 schemas, migrations, user data, or public APIs.
 
-## v0.3.0 changes
+## v0.4.0 changes
 
-v0.3.0 enforces Verification Framework permissions on the OpenCode reviewer:
+v0.4.0 adds the Task Execution Policy as the sixth authoritative shared
+contract and introduces the generic builder agent:
 
-- Eight narrow read-only shell permissions added: `find`, `test`, `wc`, `sha256sum`, `diff`, `cmp`, `grep`, `sed`.
-- The `verification` skill is now required by the reviewer.
-- The reviewer remains unable to edit files, delegate tasks, perform Git writes, run destructive commands, or write to the Brain.
-- No dedicated verifier agent exists.
-- Active OpenCode controlled-copy equality was verified after explicit synchronization.
-- Future platforms remain placeholders.
+- `shared/task-execution-policy.md` — durable execution-policy vocabulary:
+  task classes, execution profiles, role separation, runtime substitution
+  invariant, supplied-routing validation, delegated-prompt minimum contract.
+- `platforms/opencode/agents/builder.md` — generic implementation agent for
+  controlled repository changes. Edit allowed; commit/push denied.
+- `DECISIONS/architecture-change-proposal-task-execution-policy.md` —
+  accepted Architecture Change Proposal (independent review: PASS).
+- `VERSION` updated to `0.4.0`; MANIFEST, ARCHITECTURE, CAPABILITY_MATRIX,
+  and DEFINITION-OF-DONE updated to reflect the sixth contract and the
+  builder agent.
+- `tests/test_agent_rollout.py` expanded with builder rollout coverage
+  (repository validation: PASS, 33 tests).
 
 ## Status
 
-**Agent Pack v0.3.0 — Released**
+**Agent Pack v0.4.0 — Released**
 
 | Gateway | Result |
 |---|---|
-| Repository validation | PASS (16 tests) |
-| Quick Verification | PASS |
-| Standard Verification | PASS WITH NOTES |
-| Certification | CERTIFIED WITH NOTES |
+| Repository validation | PASS (33 tests) |
+| Builder agent implementation review | PASS |
+| Task Execution Policy foundation review | READY FOR INDEPENDENT REVIEW |
+| ACP independent review | PASS |
 | OpenCode | Supported |
 | Codex | Placeholder (not implemented) |
 | Claude Code | Placeholder (not implemented) |
@@ -54,6 +61,9 @@ Review artifacts:
 - `.agent-work/reviews/review-implement-verification-shared-contract-v0.2.md`
 - `.agent-work/reviews/review-implement-opencode-quick-verification-v0.2.md`
 - `.agent-work/reviews/review-agent-pack-v0.3-reviewer-verification-permissions.md`
+- `.agent-work/reviews/review-implement-opencode-builder-agent-v0.4.0.md`
+- `.agent-work/reviews/review-implement-task-execution-policy-foundation.md`
+- `.agent-work/reviews/independent-review-task-execution-policy-acp.md`
 
 Certification artifacts:
 
@@ -175,6 +185,7 @@ equality, frontmatter integrity, model-name absence, and agent coexistence).
 - [MANIFEST.md](MANIFEST.md) — Shared-to-platform mapping and update rules.
 - [CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md) — Platform capability matrix (OpenCode + Codex CLI).
 - [DECISIONS/](DECISIONS/) — Architecture Decision Records (ADRs).
+- [RELEASE_NOTES_v0.4.0.md](RELEASE_NOTES_v0.4.0.md) — v0.4.0 release notes.
 - [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md) — v0.3.0 release notes.
 - [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md) — v0.2.0 release notes.
 

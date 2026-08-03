@@ -107,7 +107,9 @@ No shared-contract changes. No new platform adapters.
 ### Deferred from original v0.3.0 scope
 
 The following items from the original v0.3.0 roadmap (Installation and
-workstation rollout) are deferred to a future milestone:
+workstation rollout) remain **unresolved pre-v1.0 work**. They are deferred
+to a future milestone between the Codex Platform Assessment and v1.0.0 and
+are not implemented or redesigned here:
 
 - Deterministic OpenCode installation procedure.
 - Backup and rollback procedure.
@@ -117,7 +119,48 @@ workstation rollout) are deferred to a future milestone:
 
 ---
 
-## v0.4.0 — Codex Platform Assessment
+## v0.4.0 — Task Execution Policy and builder agent
+
+**Status: Completed.**
+
+The original v0.4.0 roadmap entry (Codex Platform Assessment) was superseded
+by the accepted Architecture Change Proposal for the task-execution-policy
+contract. The execution-policy foundation was delivered first so that the
+Codex assessment can evaluate both platforms against the same shared
+definitions (per
+[DECISIONS/architecture-change-proposal-task-execution-policy.md](DECISIONS/architecture-change-proposal-task-execution-policy.md)).
+
+Delivered:
+
+- `shared/task-execution-policy.md` — sixth authoritative shared contract.
+  Defines task classes (critical, standard, mechanical), execution profiles
+  (critical, review, balanced, light), role separation, the runtime
+  substitution invariant, supplied-routing validation, and the
+  delegated-prompt minimum contract.
+- `platforms/opencode/agents/builder.md` — generic implementation agent for
+  controlled repository changes. Edit allowed; commit/push denied.
+- `DECISIONS/architecture-change-proposal-task-execution-policy.md` —
+  accepted Architecture Change Proposal (independent review: PASS).
+- Updated `VERSION` (0.4.0), `MANIFEST.md`, `ARCHITECTURE.md`,
+  `CAPABILITY_MATRIX.md`, `DEFINITION-OF-DONE.md`, `README.md`, and
+  `shared/verification.md`.
+- `tests/test_agent_rollout.py` expanded with builder rollout coverage
+  (repository validation: PASS, 33 tests).
+
+Reviews:
+
+- Builder agent implementation review: PASS
+  (`.agent-work/reviews/review-implement-opencode-builder-agent-v0.4.0.md`)
+- Task-execution-policy foundation review:
+  (`.agent-work/reviews/review-implement-task-execution-policy-foundation.md`)
+- Architecture Change Proposal independent review: PASS
+  (`.agent-work/reviews/independent-review-task-execution-policy-acp.md`)
+
+---
+
+## Codex Platform Assessment
+
+**Status: Planned.**
 
 Planned deliverables:
 
@@ -127,7 +170,9 @@ Planned deliverables:
 
 ---
 
-## v0.5.0 — Codex adapter
+## Codex adapter
+
+**Status: Planned.**
 
 Planned deliverables:
 
@@ -146,7 +191,9 @@ existing shared contracts to the closest equivalent Codex constructs.
 
 ---
 
-## v0.5.0 — Claude Code and Antigravity assessment
+## Claude Code and Antigravity assessment
+
+**Status: Planned.**
 
 Planned deliverables:
 
