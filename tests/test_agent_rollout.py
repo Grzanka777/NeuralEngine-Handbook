@@ -414,6 +414,105 @@ class TestPlannerAgent:
         delimiters = _count_frontmatter_delimiters(content)
         assert delimiters == 2, f"Expected 2 frontmatter delimiters, found {delimiters}"
 
+    def test_planner_evidence_first_before_proceed(self) -> None:
+        """Planner requires evidence (source, location, observed, expected, mismatch)
+        before Proceed."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "authoritative source" in content
+        assert "exact file and location" in content
+        assert "observed value" in content
+        assert "expected value" in content
+        assert "evidence proving a concrete mismatch" in content
+
+    def test_planner_no_gap_means_defer_or_reject(self) -> None:
+        """Planner returns Defer or Reject when no evidence-backed gap exists."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "No evidence-backed implementation gap found" in content
+
+    def test_planner_no_delegated_prompt_without_gap(self) -> None:
+        """Planner does not generate a delegated prompt without a proven gap."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Do not generate a delegated prompt when no proven gap exists" in content
+
+    def test_planner_live_version_inspection_required(self) -> None:
+        """Planner requires live reading of agent-pack/VERSION."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "cat agent-pack/VERSION" in content
+
+    def test_planner_invented_facts_forbidden(self) -> None:
+        """Planner forbids inventing branch, commit, VERSION, or other repository facts."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Never invent branch, commit, VERSION" in content
+        assert "NOT VERIFIED" in content
+
+    def test_planner_manual_vs_agent_decision_mandatory(self) -> None:
+        """Planner requires an explicit Manual execution sufficient vs Agent execution required
+        decision before assigning a role."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Manual execution sufficient" in content
+        assert "Agent execution required" in content
+
+    def test_planner_manual_preferred_for_trivial(self) -> None:
+        """Planner prefers manual execution for one-line deterministic corrections."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert (
+            "one exact deterministic command" in content or "one-line bounded correction" in content
+        )
+        assert "Prefer manual execution" in content
+
+    def test_planner_repository_native_validation(self) -> None:
+        """Planner derives validation from AGENTS.md and task scope."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Derive validation from `AGENTS.md`" in content
+
+    def test_planner_ruff_on_markdown_rejected(self) -> None:
+        """Planner rejects Ruff against markdown-only directories as meaningful validation."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Ruff against markdown-only directories as meaningful" in content
+
+    def test_planner_heading_is_decision_package(self) -> None:
+        """Planner Decision Package heading is # Decision Package, never # Oracle Decision Package."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "# Decision Package" in content
+        assert "# Oracle Decision Package" not in content
+        assert "Never use `Oracle Decision Package`" in content
+
+    def test_planner_unresolved_placeholders_forbidden(self) -> None:
+        """Planner forbids unresolved placeholders: <timestamp>, <name>, <TODO>."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "unresolved placeholders" in content.lower()
+        assert "<timestamp>" in content
+        assert "<name>" in content
+
+    def test_planner_contradictory_agent_work_exclusion_forbidden(self) -> None:
+        """Planner forbids excluding .agent-work/ while requiring an artifact inside it."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Do not exclude `.agent-work/` while requiring an artifact" in content
+
+    def test_planner_proportionality_enforced(self) -> None:
+        """Planner enforces proportionality: compact output, smallest step, no expansion."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "keep output compact" in content
+        assert "smallest valuable next step" in content
+        assert "do not expand a one-line correction into a milestone" in content
+
+    def test_planner_existing_permissions_remain(self) -> None:
+        """Planner retains existing permissions: edit ask, task deny, git writes denied,
+        no concrete model names."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "edit: ask" in content
+        assert "task: deny" in content
+        assert '"git add*": deny' in content
+        assert '"git commit*": deny' in content
+        assert '"git push*": deny' in content
+        import re
+
+        model_pattern = re.compile(
+            r"(gpt|deepseek|claude|gemini|llama|anthropic|openai|groq|mistral)",
+            re.IGNORECASE,
+        )
+        assert not model_pattern.search(content)
+
 
 class TestMechanicalAgent:
     """Tests for the mechanical agent definition."""
@@ -550,11 +649,11 @@ class TestMechanicalAgent:
 class TestReadmeTestCount:
     """Tests for README current-vs-historical test-count treatment."""
 
-    def test_readme_current_state_64_tests(self) -> None:
-        """README gateway table states the current 64-test count."""
+    def test_readme_current_state_78_tests(self) -> None:
+        """README gateway table states the current 78-test count."""
         readme = Path(__file__).resolve().parents[1] / "agent-pack" / "README.md"
         content = readme.read_text(encoding="utf-8")
-        assert "| Repository validation | PASS (64 tests) |" in content
+        assert "| Repository validation | PASS (78 tests) |" in content
 
     def test_readme_preserves_historical_33_test_evidence(self) -> None:
         """README retains the historical v0.4.0 33-test release checkpoint."""
