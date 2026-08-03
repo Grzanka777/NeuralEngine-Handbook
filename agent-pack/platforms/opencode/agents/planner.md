@@ -141,6 +141,82 @@ No evidence-backed implementation gap found.
 
 Do not generate a delegated prompt when no proven gap exists.
 
+## Historical evidence handling
+
+### Value classification
+
+Before declaring a value stale, classify it as exactly one of:
+
+- `CURRENT STATE`
+- `HISTORICAL CHECKPOINT`
+- `FROZEN RELEASE EVIDENCE`
+- `AMBIGUOUS`
+
+Historical or frozen values must not be changed merely because the current
+value differs.
+
+Examples include release notes, version-specific summaries, completed
+roadmap milestones, certifications, review artifacts, and commit-specific
+validation evidence.
+
+### Context-first interpretation
+
+Inspect:
+
+- section heading;
+- surrounding paragraph;
+- version or milestone label;
+- document purpose;
+- relevant tests;
+- linked release/review evidence.
+
+Numeric comparison alone is insufficient.
+
+### Tests as semantic evidence
+
+When tests intentionally distinguish current and historical values, treat
+them as explicit semantic authority.
+
+For this repository:
+
+- `78` is the current state;
+- `33` is preserved historical v0.4.0 evidence.
+
+The planner must not propose changing the historical value.
+
+### No-gap outcome
+
+When differing values are historically justified and the current state is
+correct, return:
+
+- `Decision: Defer` or `Reject`
+- `No evidence-backed implementation gap found.`
+- `Manual vs agent: none`
+- `Agent role: none`
+- `Execution profile: none`
+- `Artifact: none`
+
+Do not generate a delegated prompt.
+
+### Ambiguity
+
+If context is ambiguous, return `Defer` and state missing evidence.
+Never convert ambiguity into a manual edit.
+
+### Documentation-value Decision Package evidence
+
+For documentation-value tasks require:
+
+```text
+Statement classification: CURRENT STATE | HISTORICAL CHECKPOINT | FROZEN RELEASE EVIDENCE | AMBIGUOUS
+Context evidence: <heading, paragraph, version/milestone label>
+Test evidence: <relevant test or none>
+Mismatch status: CONFIRMED | NOT CONFIRMED | AMBIGUOUS
+```
+
+`Proceed` or `Manual execution sufficient` is allowed only when mismatch
+status is `CONFIRMED`.
+
 ## Manual-vs-agent gate
 
 Before assigning a role, you must explicitly choose:
@@ -180,6 +256,20 @@ Never invent branch, commit, VERSION, test count, file state, staging
 state, or validation result. Unobserved facts must be marked
 `NOT VERIFIED`. Do not treat supplied routing context as authoritative
 when it conflicts with current repository state.
+
+## Worktree truthfulness
+
+Require direct:
+
+```fish
+git status --short
+git diff --cached --name-only
+```
+
+Report exact paths for any modified, staged, or untracked files.
+
+Do not say `untracked planner.md` without an exact path and classification
+as inside/outside the repository.
 
 ## Portfolio and project context
 
@@ -311,6 +401,22 @@ uv run pytest --basetemp=/run/media/grzanka/777/tmp/pytest-handbook
 git diff --check
 git status --short
 ```
+
+Prefer `uv run pytest --collect-only -q` for test collection over the
+full `--basetemp` run when only the test count is needed. For full
+validation, use:
+
+```fish
+uv run pytest --basetemp=/run/media/grzanka/777/tmp/pytest-handbook
+```
+
+Reject fragile parsing such as:
+
+```fish
+uv run pytest --collect-only | grep "tests collected"
+```
+
+unless the exact output format was directly verified.
 
 Reduced validation requires explicit justification. Do not present
 Ruff against markdown-only directories as meaningful repository
