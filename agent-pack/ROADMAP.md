@@ -160,13 +160,39 @@ Reviews:
 
 ## Codex Platform Assessment
 
-**Status: Planned.**
+**Status: Completed.**
 
-Planned deliverables:
+Delivered:
 
-- Codex Platform Assessment — evaluate Codex CLI against the Capability Matrix.
-- Evidence-based capability inventory. No invented features.
-- Decision: proceed with Codex adapter, defer, or document as unsupported.
+- Codex CLI v0.146.0 assessed against the Capability Matrix with live CLI
+  evidence (`codex --help`, `codex exec --help`, `codex review --help`,
+  `codex doctor`, `~/.codex/config.toml`).
+- Verdict: **PROCEED** — 7 capabilities SUPPORTED, 6 PARTIALLY SUPPORTED,
+  0 UNSUPPORTED. Codex can serve as a supported Agent Pack platform for v1.0.
+- Assessment artifact:
+  (`.agent-work/reviews/review-codex-platform-assessment-v1.0.md`)
+
+Next step: bounded Codex adapter implementation (below).
+
+---
+
+## OpenCode planner and mechanical agents
+
+**Status: Completed.**
+
+Delivered:
+
+- `platforms/opencode/agents/planner.md` — read-only planning and routing
+  agent. Classifies tasks, selects workflows and roles, defines execution
+  contracts, produces Decision Packages and delegated prompts.
+- `platforms/opencode/agents/mechanical.md` — deterministic low-judgment
+  operations agent. Exact-path verification, equality checks, staging
+  inspection, and exact-path staging when explicitly authorized.
+- Updated MANIFEST, CAPABILITY_MATRIX, README, and this roadmap.
+- Implementation review:
+  (`.agent-work/reviews/review-implement-opencode-planner-mechanical-agents.md`)
+
+No shared-contract changes. No VERSION change.
 
 ---
 

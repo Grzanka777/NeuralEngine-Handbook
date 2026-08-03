@@ -17,6 +17,8 @@
 - `agents/arch-data-engineer.md`
 - `agents/builder.md`
 - `agents/reviewer.md`
+- `agents/planner.md`
+- `agents/mechanical.md`
 
 These files are platform-specific configuration artifacts. They have no
 corresponding shared source in this pack.

@@ -14,7 +14,7 @@
 
 | Capability | OpenCode | Codex CLI |
 |---|---|---|
-| **Agents / roles** | SUPPORTED — `builder` (generic implementation), `arch-data-engineer` (specialist, scoped permissions), `reviewer` (read-only, restricted permissions) | NOT YET ASSESSED |
+| **Agents / roles** | SUPPORTED — `builder` (generic implementation), `arch-data-engineer` (specialist, scoped permissions), `reviewer` (read-only, restricted permissions), `planner` (read-only planning and routing), `mechanical` (deterministic low-judgment operations) | NOT YET ASSESSED |
 | **Skills / contracts** | SUPPORTED — 5 skills: neuralengine, repository-review, python-project-validation, arch-linux-diagnostics, verification | NOT YET ASSESSED |
 | **Global instructions** | SUPPORTED — `neuralengine-usage.md` loaded via `opencode.json` instructions array | NOT YET ASSESSED |
 | **Permissions** | SUPPORTED — Agent-level permission blocks with allow/deny/ask for edit, bash, task, tools. Reviewer enforces read-only. | NOT YET ASSESSED |

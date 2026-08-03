@@ -42,7 +42,7 @@ contract and introduces the generic builder agent:
 
 | Gateway | Result |
 |---|---|
-| Repository validation | PASS (33 tests) |
+| Repository validation | PASS (64 tests) |
 | Builder agent implementation review | PASS |
 | Task Execution Policy foundation review | READY FOR INDEPENDENT REVIEW |
 | ACP independent review | PASS |
@@ -71,17 +71,22 @@ Certification artifacts:
 
 ## OpenCode agents
 
-Three first-class OpenCode agents with distinct roles:
+Five first-class OpenCode agents with distinct roles:
 
 | Agent | Role | Write access | File |
 |---|---|---|---|
+| **planner** | Read-only planning and routing | Edit ask (prompt/Decision Package artifacts only), commit/push denied | `agents/planner.md` |
 | **builder** | Generic implementation | Edit allowed, commit/push denied | `agents/builder.md` |
 | **arch-data-engineer** | Data architecture and persistence specialization | Edit allowed, commit/push denied, scoped bash allowlist | `agents/arch-data-engineer.md` |
 | **reviewer** | Independent read-only review | Denied | `agents/reviewer.md` |
+| **mechanical** | Deterministic low-judgment operations | Edit denied, staging ask (exact paths only), commit/push denied | `agents/mechanical.md` |
 
 ### Selection policy
 
 ```text
+planning / routing / Decision Package / delegated prompt generation
+→ planner
+
 generic implementation
 → builder
 
@@ -90,11 +95,16 @@ data architecture / persistence / migration specialization
 
 independent read-only review
 → reviewer
+
+deterministic exact-path verification, equality checks, staging inspection
+→ mechanical
 ```
 
 `arch-data-engineer` remains the default agent for backward compatibility.
 `builder` is the recommended agent for generic implementation tasks that do not
-require specialist domain knowledge.
+require specialist domain knowledge. `planner` is the recommended entry point
+for structured Agent Pack workflows that need a Decision Package or delegated
+prompt before implementation.
 
 ## Six authoritative shared contracts
 
@@ -201,9 +211,11 @@ Shared contracts:
 OpenCode platform implementation:
 
 - [platforms/opencode/](platforms/opencode/) — OpenCode adapter and skills.
+- [platforms/opencode/agents/planner.md](platforms/opencode/agents/planner.md) — Read-only planning and routing agent.
 - [platforms/opencode/agents/builder.md](platforms/opencode/agents/builder.md) — Generic builder agent (new in v0.4.0).
 - [platforms/opencode/agents/arch-data-engineer.md](platforms/opencode/agents/arch-data-engineer.md) — Specialist implementation agent.
 - [platforms/opencode/agents/reviewer.md](platforms/opencode/agents/reviewer.md) — Read-only independent reviewer.
+- [platforms/opencode/agents/mechanical.md](platforms/opencode/agents/mechanical.md) — Deterministic low-judgment operations agent.
 - [platforms/opencode/skills/verification/SKILL.md](platforms/opencode/skills/verification/SKILL.md) — Verification skill: Quick, Standard, and Certification (v0.2.0).
 - [platforms/opencode/verification-permissions.md](platforms/opencode/verification-permissions.md) — Verification permission requirements.
 - [../.agent-work/prompts/verify-agent-pack-v0.2.md](../.agent-work/prompts/verify-agent-pack-v0.2.md) — Self-verification orchestrator prompt.

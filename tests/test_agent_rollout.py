@@ -339,3 +339,260 @@ class TestControlledInstall:
         all_files = list(tmp_path.rglob("*"))
         for f in all_files:
             assert str(tmp_path) in str(f)
+
+
+class TestPlannerAgent:
+    """Tests for the planner agent definition."""
+
+    def test_planner_definition_exists(self) -> None:
+        """Planner agent definition exists at the expected path."""
+        source = _source_agent("planner.md")
+        assert source.is_file()
+
+    def test_planner_role_identity(self) -> None:
+        """Planner identifies itself as the planning and routing role."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "# Planner" in content
+        assert "planning and routing agent" in content
+
+    def test_planner_no_model_names(self) -> None:
+        """Planner contains no concrete runtime-model names."""
+        import re
+
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        pattern = re.compile(
+            r"(gpt|deepseek|claude|gemini|llama|anthropic|openai|groq|mistral)",
+            re.IGNORECASE,
+        )
+        assert not pattern.search(content), f"Model name found: {pattern.search(content)}"
+
+    def test_planner_task_delegation_denied(self) -> None:
+        """Planner cannot delegate tasks."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "task: deny" in content
+
+    def test_planner_staging_commit_push_denied(self) -> None:
+        """Planner denies git add, commit, and push."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert '"git add*": deny' in content
+        assert '"git commit*": deny' in content
+        assert '"git push*": deny' in content
+
+    def test_planner_edit_is_ask(self) -> None:
+        """Planner uses edit: ask (no path-scoped edit support in OpenCode)."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "edit: ask" in content
+
+    def test_planner_role_separation_stated(self) -> None:
+        """Planner states separation from implementation and independent review."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "remain separate from implementation and independent review" in content
+
+    def test_planner_decision_package_required(self) -> None:
+        """Planner requires a Decision Package and delegated-prompt contract."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Decision Package" in content
+        assert "delegated-prompt minimum contract" in content
+
+    def test_planner_no_mutable_oracle_data(self) -> None:
+        """Planner excludes mutable Oracle-only operational data."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Do not hardcode current model names" in content
+        assert "Do not depend on Oracle Wisdom snapshots" in content
+
+    def test_planner_mode_primary(self) -> None:
+        """Planner uses mode: primary (no native plan mode dependency)."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "mode: primary" in content
+
+    def test_planner_frontmatter_two_delimiters(self, tmp_path: Path) -> None:
+        """Installed planner frontmatter has exactly two '---' delimiters."""
+        source = _source_agent("planner.md")
+        result = controlled_install(source, tmp_path)
+
+        content = result["target"].read_text(encoding="utf-8")
+        delimiters = _count_frontmatter_delimiters(content)
+        assert delimiters == 2, f"Expected 2 frontmatter delimiters, found {delimiters}"
+
+
+class TestMechanicalAgent:
+    """Tests for the mechanical agent definition."""
+
+    def test_mechanical_definition_exists(self) -> None:
+        """Mechanical agent definition exists at the expected path."""
+        source = _source_agent("mechanical.md")
+        assert source.is_file()
+
+    def test_mechanical_role_identity(self) -> None:
+        """Mechanical identifies itself as the deterministic operations role."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "# Mechanical" in content
+        assert "deterministic low-judgment" in content
+
+    def test_mechanical_no_model_names(self) -> None:
+        """Mechanical contains no concrete runtime-model names."""
+        import re
+
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        pattern = re.compile(
+            r"(gpt|deepseek|claude|gemini|llama|anthropic|openai|groq|mistral)",
+            re.IGNORECASE,
+        )
+        assert not pattern.search(content), f"Model name found: {pattern.search(content)}"
+
+    def test_mechanical_edit_denied(self) -> None:
+        """Mechanical cannot edit semantic content."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "edit: deny" in content
+
+    def test_mechanical_task_delegation_denied(self) -> None:
+        """Mechanical cannot delegate tasks."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "task: deny" in content
+
+    def test_mechanical_verification_commands_allowed(self) -> None:
+        """Mechanical allows verification commands."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        for cmd in (
+            '"sha256sum *": allow',
+            '"cmp *": allow',
+            '"diff *": allow',
+            '"find *": allow',
+            '"test *": allow',
+            '"wc *": allow',
+            '"grep *": allow',
+            '"sed *": allow',
+        ):
+            assert cmd in content, f"Missing allow rule: {cmd}"
+
+    def test_mechanical_git_add_is_ask(self) -> None:
+        """Mechanical git add is ask, never unconditional allow."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert '"git add*": ask' in content
+        assert '"git add*": allow' not in content
+
+    def test_mechanical_write_commands_denied(self) -> None:
+        """Mechanical denies commit, push, reset, clean, and destructive commands."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        for cmd in (
+            '"git commit*": deny',
+            '"git push*": deny',
+            '"git reset*": deny',
+            '"git clean*": deny',
+            '"rm *": deny',
+            '"mv *": deny',
+            '"cp *": deny',
+            '"mkfs*": deny',
+            '"fdisk*": deny',
+            '"parted*": deny',
+        ):
+            assert cmd in content, f"Missing deny rule: {cmd}"
+
+    def test_mechanical_path_and_precondition_rules(self) -> None:
+        """Mechanical states exact-path and precondition rules."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "explicit, fully-qualified paths" in content
+        assert "Precondition checks" in content
+
+    def test_mechanical_not_general_builder(self) -> None:
+        """Mechanical is not described as a general-purpose builder."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "not a general-purpose builder" in content
+
+    def test_mechanical_frontmatter_two_delimiters(self, tmp_path: Path) -> None:
+        """Installed mechanical frontmatter has exactly two '---' delimiters."""
+        source = _source_agent("mechanical.md")
+        result = controlled_install(source, tmp_path)
+
+        content = result["target"].read_text(encoding="utf-8")
+        delimiters = _count_frontmatter_delimiters(content)
+        assert delimiters == 2, f"Expected 2 frontmatter delimiters, found {delimiters}"
+
+    def test_mechanical_audit_returned_in_completion(self) -> None:
+        """Mechanical returns the audit in its completion response."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "returned in your completion response" in content
+        assert "including the returned audit content" in content
+
+    def test_mechanical_does_not_claim_direct_artifact_creation(self) -> None:
+        """Mechanical does not claim direct audit-file creation."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "You do not create" in content
+        assert "edit an audit file" in content
+        assert "you do not persist files yourself" in content
+
+    def test_mechanical_edit_deny_retained_after_remediation(self) -> None:
+        """Mechanical edit: deny remains after the audit-boundary clarification."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert "edit: deny" in content
+
+    def test_mechanical_git_add_ask_retained_after_remediation(self) -> None:
+        """Mechanical git add*: ask remains after the audit-boundary clarification."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        assert '"git add*": ask' in content
+        assert '"git add*": allow' not in content
+
+    def test_mechanical_no_weakened_boundary_after_remediation(self) -> None:
+        """Mechanical write and destructive command denials remain intact."""
+        content = _source_agent("mechanical.md").read_text(encoding="utf-8")
+        for cmd in (
+            '"git commit*": deny',
+            '"git push*": deny',
+            '"git reset*": deny',
+            '"git clean*": deny',
+            '"rm *": deny',
+            '"mv *": deny',
+            '"cp *": deny',
+        ):
+            assert cmd in content, f"Missing deny rule: {cmd}"
+
+
+class TestReadmeTestCount:
+    """Tests for README current-vs-historical test-count treatment."""
+
+    def test_readme_current_state_64_tests(self) -> None:
+        """README gateway table states the current 64-test count."""
+        readme = Path(__file__).resolve().parents[1] / "agent-pack" / "README.md"
+        content = readme.read_text(encoding="utf-8")
+        assert "| Repository validation | PASS (64 tests) |" in content
+
+    def test_readme_preserves_historical_33_test_evidence(self) -> None:
+        """README retains the historical v0.4.0 33-test release checkpoint."""
+        readme = Path(__file__).resolve().parents[1] / "agent-pack" / "README.md"
+        content = readme.read_text(encoding="utf-8")
+        assert "repository validation: PASS, 33 tests" in content
+
+
+class TestAgentCoexistence:
+    """Tests for coexistence of all five OpenCode agents."""
+
+    def test_all_five_agents_present(self) -> None:
+        """All five agent definitions exist."""
+        names = [
+            "arch-data-engineer.md",
+            "builder.md",
+            "reviewer.md",
+            "planner.md",
+            "mechanical.md",
+        ]
+        for name in names:
+            assert _source_agent(name).is_file(), f"Missing agent: {name}"
+
+    def test_five_agent_install_preserves_all(self, tmp_path: Path) -> None:
+        """Installing all five agents into one directory preserves all."""
+        target_dir = tmp_path / "agents"
+        target_dir.mkdir(parents=True)
+
+        names = [
+            "arch-data-engineer.md",
+            "builder.md",
+            "reviewer.md",
+            "planner.md",
+            "mechanical.md",
+        ]
+        for name in names:
+            result = controlled_install(_source_agent(name), target_dir)
+            assert result["action"] == "created"
+
+        installed = {p.name for p in target_dir.iterdir()}
+        assert installed == set(names)
