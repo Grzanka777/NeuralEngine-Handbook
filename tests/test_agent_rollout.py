@@ -513,6 +513,111 @@ class TestPlannerAgent:
         )
         assert not model_pattern.search(content)
 
+    # -- Historical evidence handling tests --
+
+    def test_planner_historical_classification_exists(self) -> None:
+        """Planner requires classifying values as CURRENT STATE, HISTORICAL CHECKPOINT,
+        FROZEN RELEASE EVIDENCE, or AMBIGUOUS before declaring them stale."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "CURRENT STATE" in content
+        assert "HISTORICAL CHECKPOINT" in content
+        assert "FROZEN RELEASE EVIDENCE" in content
+        assert "AMBIGUOUS" in content
+
+    def test_planner_historical_not_changed_by_current_diff(self) -> None:
+        """Planner forbids changing historical values merely because the current value differs."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "must not be changed merely because the current" in content
+        assert "value differs." in content
+
+    def test_planner_context_inspection_required(self) -> None:
+        """Planner requires inspecting section heading, paragraph, version label,
+        document purpose, tests, and linked evidence before declaring a value stale."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "section heading" in content
+        assert "version or milestone label" in content
+        assert "document purpose" in content
+        assert "linked release/review evidence" in content
+        assert "Numeric comparison alone is insufficient" in content
+
+    def test_planner_tests_as_semantic_evidence(self) -> None:
+        """Planner treats tests that distinguish current and historical values
+        as explicit semantic authority."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "When tests intentionally distinguish current and historical values" in content
+        assert "explicit semantic authority" in content
+
+    def test_planner_78_current_33_historical_recognized(self) -> None:
+        """Planner recognizes 78 as current state and 33 as preserved historical v0.4.0 evidence."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "78` is the current state" in content
+        assert "33` is preserved historical v0.4.0 evidence" in content
+        assert "must not propose changing the historical value" in content
+
+    def test_planner_no_gap_returns_defer_or_reject(self) -> None:
+        """Planner returns Defer or Reject when values are historically justified
+        and the current state is correct."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "historically justified and the current state is" in content
+        assert "correct, return:" in content
+
+    def test_planner_no_gap_fields_become_none(self) -> None:
+        """Planner sets manual-vs-agent, role, profile, and artifact to none
+        when no evidence-backed gap exists."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Manual vs agent: none" in content
+        assert "Agent role: none" in content
+        assert "Execution profile: none" in content
+        assert "Artifact: none" in content
+
+    def test_planner_no_delegated_prompt_for_historical_differences(self) -> None:
+        """Planner does not generate a delegated prompt for historically justified
+        value differences."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Do not generate a delegated prompt" in content  # in no-gap outcome
+
+    def test_planner_ambiguous_context_defers(self) -> None:
+        """Planner returns Defer when context is ambiguous and states missing evidence."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "If context is ambiguous, return `Defer`" in content
+        assert "Never convert ambiguity into a manual edit" in content
+        assert "state missing evidence" in content
+
+    def test_planner_prefers_pytest_collect_only_q(self) -> None:
+        """Planner prefers pytest --collect-only -q over full basetemp runs for test count."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "pytest --collect-only -q" in content
+
+    def test_planner_rejects_fragile_grep_parsing(self) -> None:
+        """Planner rejects fragile parsing like pytest --collect-only | grep 'tests collected'."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "grep" in content
+        assert "tests collected" in content
+        assert "Reject fragile parsing" in content
+
+    def test_planner_exact_untracked_paths_required(self) -> None:
+        """Planner requires exact paths for untracked files and classification
+        as inside/outside the repository."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Report exact paths for any modified, staged, or untracked files" in content
+        assert "inside/outside the repository" in content
+
+    def test_planner_documentation_value_evidence_fields(self) -> None:
+        """Planner requires Statement classification, Context evidence, Test evidence,
+        and Mismatch status for documentation-value tasks."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "Statement classification: CURRENT STATE" in content
+        assert "Context evidence:" in content
+        assert "Test evidence:" in content
+        assert "Mismatch status: CONFIRMED" in content
+
+    def test_planner_proceed_only_when_confirmed(self) -> None:
+        """Planner allows Proceed or Manual execution sufficient only when mismatch
+        status is CONFIRMED."""
+        content = _source_agent("planner.md").read_text(encoding="utf-8")
+        assert "is allowed only when mismatch" in content
+        assert "status is `CONFIRMED`" in content
+
 
 class TestMechanicalAgent:
     """Tests for the mechanical agent definition."""
