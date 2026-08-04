@@ -754,11 +754,11 @@ class TestMechanicalAgent:
 class TestReadmeTestCount:
     """Tests for README current-vs-historical test-count treatment."""
 
-    def test_readme_current_state_78_tests(self) -> None:
+    def test_readme_current_state_92_tests(self) -> None:
         """README gateway table states the current 78-test count."""
         readme = Path(__file__).resolve().parents[1] / "agent-pack" / "README.md"
         content = readme.read_text(encoding="utf-8")
-        assert "| Repository validation | PASS (78 tests) |" in content
+        assert "| Repository validation | PASS (92 tests) |" in content
 
     def test_readme_preserves_historical_33_test_evidence(self) -> None:
         """README retains the historical v0.4.0 33-test release checkpoint."""
