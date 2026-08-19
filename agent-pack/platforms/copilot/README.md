@@ -50,9 +50,11 @@ instructions.
   edits, destructive commands, URL access, and other modifying tools require
   explicit approval for the CLI. VS Code agent permissions are session and
   host controlled; terminal commands and file edits may require approval.
-- Local verification found no copilot binary. The gh copilot help command
-  identified a preview wrapper that would download the CLI if absent; no
-  download or session was started.
+- No `copilot` executable is currently available on `PATH`. A user-local
+  GitHub Copilot CLI binary may exist outside `PATH`; installation and PATH
+  behavior remain target-environment concerns.
+- No live Copilot session, project-skill loading, automatic adherence, or
+  model-driven execution was verified.
 - VS Code, the Copilot extension, agent mode, the neural executable, PATH, Brain
   access, and command behavior must be verified in each target environment.
 
