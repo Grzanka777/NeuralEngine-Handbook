@@ -13,6 +13,7 @@ repository—not a separate product.
 - One complete platform variant (OpenCode) derived from the user's current,
   working OpenCode configuration.
 - One bounded Codex CLI NeuralEngine skill projection.
+- One bounded Goose CLI/Desktop NeuralEngine skill projection.
 - Placeholder directories for future Claude Code and Antigravity platform
   variants.
 
@@ -49,6 +50,7 @@ contract and introduces the generic builder agent:
 | ACP independent review | PASS |
 | OpenCode | Supported |
 | Codex CLI NeuralEngine slice | Supported with limitations (CLI only) |
+| Goose CLI/Desktop NeuralEngine slice | Supported with limitations (bounded post-v1.0 extension) |
 | Claude Code | Placeholder (not implemented) |
 | Antigravity | Placeholder (not implemented) |
 
@@ -213,6 +215,7 @@ OpenCode platform implementation:
 
 - [platforms/opencode/](platforms/opencode/) — OpenCode adapter and skills.
 - [platforms/codex/](platforms/codex/) — Codex CLI NeuralEngine adapter slice.
+- [platforms/goose/](platforms/goose/) — Goose CLI/Desktop NeuralEngine adapter slice.
 - [platforms/opencode/agents/planner.md](platforms/opencode/agents/planner.md) — Read-only planning and routing agent.
 - [platforms/opencode/agents/builder.md](platforms/opencode/agents/builder.md) — Generic builder agent (new in v0.4.0).
 - [platforms/opencode/agents/arch-data-engineer.md](platforms/opencode/agents/arch-data-engineer.md) — Specialist implementation agent.
