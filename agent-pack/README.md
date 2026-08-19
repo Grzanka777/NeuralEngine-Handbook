@@ -15,7 +15,7 @@ repository—not a separate product.
 - One bounded Codex CLI NeuralEngine skill projection.
 - One bounded Goose CLI/Desktop NeuralEngine skill projection.
 - One bounded Claude Code/Desktop Code NeuralEngine skill projection.
-- One bounded GitHub Copilot CLI NeuralEngine skill projection.
+- One bounded GitHub Copilot CLI and VS Code NeuralEngine skill projection.
 - Placeholder directory for future Antigravity platform variants.
 
 This pack does not modify NeuralEngine runtime behavior, Brain persistence,
@@ -53,7 +53,7 @@ contract and introduces the generic builder agent:
 | Codex CLI NeuralEngine slice | Supported with limitations (CLI only) |
 | Goose CLI/Desktop NeuralEngine slice | Supported with limitations (bounded post-v1.0 extension) |
 | Claude Code/Desktop Code NeuralEngine slice | Supported with limitations (bounded post-v1.0 extension) |
-| GitHub Copilot CLI NeuralEngine slice | Supported with limitations (bounded post-v1.0 extension) |
+| GitHub Copilot CLI / VS Code NeuralEngine slice | Supported with limitations (bounded post-v1.0 extension) |
 | Antigravity | Placeholder (not implemented) |
 
 Review artifacts:
@@ -198,7 +198,7 @@ equality, frontmatter integrity, model-name absence, and agent coexistence).
 - [DEFINITION-OF-DONE.md](DEFINITION-OF-DONE.md) — Formal v1.0 quality gates.
 - [ROADMAP.md](ROADMAP.md) — Milestone roadmap from v0.1.0 to v1.0.0.
 - [MANIFEST.md](MANIFEST.md) — Shared-to-platform mapping and update rules.
-- [CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md) — Platform capability matrix (OpenCode, Codex CLI, Goose, Claude Code/Desktop Code, and Copilot CLI).
+- [CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md) — Platform capability matrix (OpenCode, Codex CLI, Goose, Claude Code/Desktop Code, and Copilot CLI / VS Code).
 - [DECISIONS/](DECISIONS/) — Architecture Decision Records (ADRs).
 - [RELEASE_NOTES_v0.4.0.md](RELEASE_NOTES_v0.4.0.md) — v0.4.0 release notes.
 - [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md) — v0.3.0 release notes.
@@ -219,7 +219,7 @@ Platform implementations:
 - [platforms/codex/](platforms/codex/) — Codex CLI NeuralEngine adapter slice.
 - [platforms/goose/](platforms/goose/) — Goose CLI/Desktop NeuralEngine adapter slice.
 - [platforms/claude/](platforms/claude/) — Claude Code/Desktop Code NeuralEngine adapter slice.
-- [platforms/copilot/](platforms/copilot/) — GitHub Copilot CLI NeuralEngine adapter slice.
+- [platforms/copilot/](platforms/copilot/) — GitHub Copilot CLI and VS Code NeuralEngine adapter slice.
 - [platforms/opencode/agents/planner.md](platforms/opencode/agents/planner.md) — Read-only planning and routing agent.
 - [platforms/opencode/agents/builder.md](platforms/opencode/agents/builder.md) — Generic builder agent (new in v0.4.0).
 - [platforms/opencode/agents/arch-data-engineer.md](platforms/opencode/agents/arch-data-engineer.md) — Specialist implementation agent.

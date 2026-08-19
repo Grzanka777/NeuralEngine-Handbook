@@ -35,8 +35,8 @@ def _body(content: str) -> str:
     return "".join(lines[closing + 1 :])
 
 
-class TestCopilotCliNeuralEngineAdapter:
-    """Tests for the single GitHub Copilot CLI projection."""
+class TestCopilotNeuralEngineAdapter:
+    """Tests for the shared GitHub Copilot CLI and VS Code projection."""
 
     def test_expected_platform_paths(self) -> None:
         """The adapter contains only its README and one skill."""
@@ -70,14 +70,26 @@ class TestCopilotCliNeuralEngineAdapter:
         paths = {path.name for path in _copilot_root().iterdir()}
         assert paths == {"README.md", "skills"}
 
-    def test_readme_describes_cli_only_boundary(self) -> None:
-        """Documentation states the bounded CLI-only support boundary."""
+    def test_readme_describes_cli_and_vscode_reuse(self) -> None:
+        """Documentation states the bounded host reuse and support boundary."""
         content = (_copilot_root() / "README.md").read_text(encoding="utf-8")
-        assert "GitHub Copilot CLI" in content
+        assert "GitHub Copilot CLI and VS Code" in content
         assert ".github/skills/neuralengine/SKILL.md" in content
-        assert "No additional project instruction pointer is added" in content
-        assert "This is CLI-only support." in content
-        assert "No editor or web-surface support is claimed." in content
+        assert "The existing skill is deliberately reused by both hosts" in content
+        assert "No additional project instruction pointer" in content
+        assert (
+            "This bounded support covers GitHub Copilot CLI and GitHub Copilot in VS Code"
+            in content
+        )
+        assert "No JetBrains, Visual Studio, GitHub.com Copilot Chat" in content
+
+    def test_vscode_reuses_cli_skill_without_second_copy(self) -> None:
+        """VS Code reuses the existing project skill without a semantic fork."""
+        skill_paths = sorted(_copilot_root().rglob("SKILL.md"))
+        assert skill_paths == [_skill()]
+        content = (_copilot_root() / "README.md").read_text(encoding="utf-8")
+        assert "there is no second semantic Copilot skill copy" in content
+        assert "No additional project instruction pointer" in content
 
     def test_adapter_does_not_claim_provider_independent_authority(self) -> None:
         """The Copilot files preserve host permissions and publication boundaries."""
