@@ -1,7 +1,7 @@
-# GitHub Copilot CLI Platform
+# GitHub Copilot CLI and VS Code Platform
 
-**Status:** NeuralEngine thin adapter implemented for GitHub Copilot CLI with
-documented limitations.
+**Status:** NeuralEngine thin adapter implemented for GitHub Copilot CLI and
+GitHub Copilot in VS Code with documented limitations.
 
 This is one bounded provider projection of
 agent-pack/shared/neuralengine.md. It is a post-v1.0 extension of the Agent
@@ -25,30 +25,40 @@ Installation is explicit and manual:
 skills/neuralengine/SKILL.md
 → <target-repository>/.github/skills/neuralengine/SKILL.md
 
-Copilot CLI natively discovers project skills and decides when to load them
-from their descriptions. No additional project instruction pointer is added:
-a duplicate pointer would repeat shared policy without adding a native loading
-requirement. Existing AGENTS.md or .github/copilot-instructions.md files in a
-target repository remain separate host instruction mechanisms.
+Copilot CLI and VS Code natively discover project skills and decide when to
+load them from their descriptions. No additional project instruction pointer is
+added: a duplicate pointer would repeat shared policy without adding a native
+loading requirement. The existing skill is deliberately reused by both hosts;
+there is no second semantic Copilot skill copy.
+
+Existing AGENTS.md, .github/copilot-instructions.md, and
+.github/instructions/**/*.instructions.md files in a target repository remain
+separate host instruction mechanisms. VS Code Copilot Chat supports these
+repository instruction types; the host may enable or disable custom
+instructions.
 
 ## Discovery and permission boundaries
 
 - GitHub documents project skills under .github/skills, .claude/skills, and
-  .agents/skills. This adapter uses the GitHub-native .github/skills path.
+  .agents/skills, and VS Code documents the same project locations. This
+  adapter uses the shared .github/skills path.
 - SKILL.md requires YAML name and description metadata. Optional allowed-tools
   is deliberately omitted so the host retains its normal approval behavior.
-- Copilot CLI discovers repository instruction files in standard locations and
-  combines applicable instructions. This adapter does not add or duplicate one.
+- Copilot CLI and VS Code Copilot have native repository instruction mechanisms;
+  this adapter does not add or duplicate one.
 - GitHub documents read-only shell and file operations as automatically allowed;
   edits, destructive commands, URL access, and other modifying tools require
-  explicit approval.
+  explicit approval for the CLI. VS Code agent permissions are session and
+  host controlled; terminal commands and file edits may require approval.
 - Local verification found no copilot binary. The gh copilot help command
   identified a preview wrapper that would download the CLI if absent; no
   download or session was started.
-- The neural executable, PATH, Brain access, and command behavior must be
-  verified in each target environment.
+- VS Code, the Copilot extension, agent mode, the neural executable, PATH, Brain
+  access, and command behavior must be verified in each target environment.
 
-This is CLI-only support. No editor or web-surface support is claimed.
+This bounded support covers GitHub Copilot CLI and GitHub Copilot in VS Code
+only. No JetBrains, Visual Studio, GitHub.com Copilot Chat, or other editor or
+web-surface support is claimed.
 
 The adapter grants no additional read, write, Brain-write, staging, commit,
 push, merge, tag, release, or publication authority.

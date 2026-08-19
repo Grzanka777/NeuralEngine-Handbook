@@ -2,9 +2,9 @@
 
 ## Shared-to-platform mapping
 
-| Authoritative source | OpenCode target | Codex CLI target | Goose CLI/Desktop target | Claude Code/Desktop Code target | Copilot CLI target |
+| Authoritative source | OpenCode target | Codex CLI target | Goose CLI/Desktop target | Claude Code/Desktop Code target | Copilot CLI / VS Code target |
 |---|---|---|---|---|---|
-| `shared/neuralengine.md` | global instruction (`neuralengine-usage.md`) and NeuralEngine skill | `platforms/codex/skills/neuralengine/SKILL.md` (controlled copy; install target is `.agents/skills/neuralengine/SKILL.md`) | `platforms/goose/skills/neuralengine/SKILL.md` (controlled copy; install target is `.agents/skills/neuralengine/SKILL.md`) | `platforms/claude/skills/neuralengine/SKILL.md` (controlled copy; install target is `.claude/skills/neuralengine/SKILL.md`) | `platforms/copilot/skills/neuralengine/SKILL.md` (controlled copy; install target is `.github/skills/neuralengine/SKILL.md`) |
+| `shared/neuralengine.md` | global instruction (`neuralengine-usage.md`) and NeuralEngine skill | `platforms/codex/skills/neuralengine/SKILL.md` (controlled copy; install target is `.agents/skills/neuralengine/SKILL.md`) | `platforms/goose/skills/neuralengine/SKILL.md` (controlled copy; install target is `.agents/skills/neuralengine/SKILL.md`) | `platforms/claude/skills/neuralengine/SKILL.md` (controlled copy; install target is `.claude/skills/neuralengine/SKILL.md`) | `platforms/copilot/skills/neuralengine/SKILL.md` (controlled copy reused by CLI and VS Code; install target is `.github/skills/neuralengine/SKILL.md`) |
 | `shared/repository-review.md` | repository-review skill | not mapped in this slice | not mapped in this slice | not mapped in this slice | not mapped in this slice |
 | `shared/python-validation.md` | python-project-validation skill | not mapped in this slice | not mapped in this slice | not mapped in this slice | not mapped in this slice |
 | `shared/arch-linux.md` | arch-linux-diagnostics skill | not mapped in this slice | not mapped in this slice | not mapped in this slice | not mapped in this slice |
