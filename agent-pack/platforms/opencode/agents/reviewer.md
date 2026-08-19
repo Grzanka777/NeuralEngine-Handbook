@@ -9,7 +9,9 @@ permission:
   list: allow
   lsp: allow
   skill: allow
-  edit: deny
+  edit:
+    "*": deny
+    ".agent-work/reviews/**": allow
   task: deny
   external_directory: ask
   webfetch: ask
@@ -86,15 +88,48 @@ Always use when applicable:
 
 Do not:
 
-* edit files;
-* create files;
-* delete files;
+* edit, create, or delete source, test, documentation, configuration, or product files;
+* modify the implementation being reviewed;
 * regenerate files;
 * format code;
 * run auto-fixes;
+* stage;
 * commit;
 * push;
+* merge;
+* tag;
+* release;
 * perform Brain writes.
+
+The review artifact write boundary (see below) is the only exception.
+
+## Review artifact write boundary
+
+The reviewer is read-only for repository source, tests, documentation,
+configuration, runtime state, product artifacts, contracts, prompts, and
+implementation files.
+
+The reviewer may create or update exactly one task-specific review artifact
+under:
+
+`.agent-work/reviews/`
+
+This exception exists only so the reviewer can preserve its own independent
+findings and evidence.
+
+It does not authorize edits to implementation files, PRDs, ADRs, shared
+contracts, prompts, source, tests, configuration, runtime state, or Brain.
+
+If a task requests a review artifact outside `.agent-work/reviews/`, stop and
+return `BLOCKED`.
+
+If more than one review artifact path is requested, stop and return `BLOCKED`
+unless the task explicitly authorizes multiple artifacts.
+
+The permission layer enables this boundary via path-scoped edit rules:
+`"*": deny` for all paths, `.agent-work/reviews/**`: allow for the single
+review artifact path. This is the narrowest technically supported mechanism
+in OpenCode's current permission model.
 
 ## Validation
 
@@ -109,6 +144,8 @@ If validation modifies files unexpectedly:
 * identify the responsible command.
 
 ## Output
+
+Save the review artifact under `.agent-work/reviews/<task-specific-name>-review.md`.
 
 Every review must contain:
 

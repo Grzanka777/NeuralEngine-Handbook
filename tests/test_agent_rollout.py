@@ -786,6 +786,165 @@ class TestMechanicalAgent:
             assert cmd in content, f"Missing deny rule: {cmd}"
 
 
+class TestReviewerAgent:
+    """Tests for the reviewer agent definition and artifact write boundary."""
+
+    def test_reviewer_definition_exists(self) -> None:
+        """Reviewer agent definition exists at the expected path."""
+        source = _source_agent("reviewer.md")
+        assert source.is_file()
+
+    def test_reviewer_role_identity(self) -> None:
+        """Reviewer identifies itself as the independent review role."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "# Primary objective" in content
+        assert "independent repository reviews" in content
+
+    def test_reviewer_no_model_names(self) -> None:
+        """Reviewer contains no concrete runtime-model names."""
+        import re
+
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        pattern = re.compile(
+            r"(gpt|deepseek|claude|gemini|llama|anthropic|openai|groq|mistral)",
+            re.IGNORECASE,
+        )
+        assert not pattern.search(content), f"Model name found: {pattern.search(content)}"
+
+    def test_reviewer_edit_is_scoped_object(self) -> None:
+        """Reviewer edit permission uses path-scoped object, not global deny/allow."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        # edit should be an object (scoped), not a bare string
+        assert 'edit:\n    "*": deny' in content
+        assert ".agent-work/reviews/**" in content
+        # Must not have bare `edit: deny` (that would be unscoped)
+        assert "edit: deny" not in content
+
+    def test_reviewer_artifact_write_boundary_section(self) -> None:
+        """Reviewer contains the artifact write boundary section."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "## Review artifact write boundary" in content
+        assert "reviewer is read-only for repository source" in content
+        assert "may create or update exactly one task-specific review artifact" in content
+
+    def test_reviewer_artifact_path_restricted(self) -> None:
+        """Review artifact path is restricted to .agent-work/reviews/."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert ".agent-work/reviews/" in content
+        # The boundary section must reference the restriction
+        assert "outside `.agent-work/reviews/`" in content
+
+    def test_reviewer_no_global_edit_allow(self) -> None:
+        """Reviewer must not have bare global edit: allow or edit: ask."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        # Must not contain bare unscoped edit: allow or edit: ask
+        assert "edit: allow" not in content
+        assert "edit: ask" not in content
+
+    def test_reviewer_commit_push_denied(self) -> None:
+        """Reviewer denies commit and push."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert '"git commit*": deny' in content
+        assert '"git push*": deny' in content
+
+    def test_reviewer_stage_denied(self) -> None:
+        """Reviewer denies staging (git add)."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert '"git add*": deny' in content
+
+    def test_reviewer_task_delegation_denied(self) -> None:
+        """Reviewer cannot delegate tasks."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "task: deny" in content
+
+    def test_reviewer_mode_primary(self) -> None:
+        """Reviewer uses mode: primary (discoverable)."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "mode: primary" in content
+
+    def test_reviewer_frontmatter_two_delimiters(self, tmp_path: Path) -> None:
+        """Installed reviewer frontmatter has exactly two '---' delimiters."""
+        source = _source_agent("reviewer.md")
+        result = controlled_install(source, tmp_path)
+
+        content = result["target"].read_text(encoding="utf-8")
+        delimiters = _count_frontmatter_delimiters(content)
+        assert delimiters == 2, f"Expected 2 frontmatter delimiters, found {delimiters}"
+
+    def test_reviewer_output_specifies_artifact_path(self) -> None:
+        """Reviewer Output section specifies the artifact path."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "Save the review artifact under" in content
+        assert ".agent-work/reviews/<task-specific-name>-review.md" in content
+
+    def test_reviewer_no_destructive_write_commands(self) -> None:
+        """Reviewer denies destructive write commands."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        for cmd in (
+            '"rm *": deny',
+            '"mv *": deny',
+            '"cp *": deny',
+            '"sed -i*": deny',
+        ):
+            assert cmd in content, f"Missing deny rule: {cmd}"
+
+    def test_reviewer_no_unsupported_permission_keys(self) -> None:
+        """Reviewer does not invent unsupported permission keys or patterns."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+
+        recognized_keys = {
+            "read",
+            "edit",
+            "glob",
+            "grep",
+            "list",
+            "lsp",
+            "skill",
+            "task",
+            "external_directory",
+            "webfetch",
+            "websearch",
+            "bash",
+        }
+
+        in_permission = False
+        for line in content.splitlines():
+            stripped = line.strip()
+
+            if stripped == "permission:":
+                in_permission = True
+                continue
+
+            if in_permission and line and not line.startswith("  "):
+                in_permission = False
+                continue
+
+            if not in_permission:
+                continue
+
+            if ":" in stripped:
+                key = stripped.split(":", 1)[0].strip()
+                if key and key not in recognized_keys and not key.startswith(chr(34)):
+                    assert False, f"Unrecognized permission key: {key}"
+
+    def test_reviewer_brain_write_denied(self) -> None:
+        """Reviewer denies Brain writes."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "perform Brain writes" in content
+
+    def test_reviewer_preserves_independence(self) -> None:
+        """Reviewer states it does not implement changes."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        assert "Do not implement requested changes" in content
+
+    def test_reviewer_artifact_is_evidence_not_implementation(self) -> None:
+        """Review artifact is evidence, not implementation."""
+        content = _source_agent("reviewer.md").read_text(encoding="utf-8")
+        # Text may span lines; normalize whitespace for matching
+        normalized = content.replace("\n", " ")
+        assert "preserve its own independent findings and evidence" in normalized
+
+
 class TestReadmeTestCount:
     """Tests for README current-vs-historical test-count treatment."""
 
