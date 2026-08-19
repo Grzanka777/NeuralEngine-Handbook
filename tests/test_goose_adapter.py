@@ -63,9 +63,7 @@ class TestGooseNeuralEngineAdapter:
 
     def test_skill_body_matches_shared_contract(self) -> None:
         """Goose cannot silently diverge from the canonical semantic source."""
-        assert _body(_skill().read_text(encoding="utf-8")) == _shared().read_text(
-            encoding="utf-8"
-        )
+        assert _body(_skill().read_text(encoding="utf-8")) == _shared().read_text(encoding="utf-8")
 
     def test_pointer_is_minimal_and_canonical(self) -> None:
         """The project pointer refers to the skill without duplicating policy."""
@@ -89,9 +87,7 @@ class TestGooseNeuralEngineAdapter:
     def test_adapter_does_not_claim_provider_independent_authority(self) -> None:
         """The Goose files preserve host permissions and publication boundaries."""
         content = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in _goose_root().rglob("*")
-            if path.is_file()
+            path.read_text(encoding="utf-8") for path in _goose_root().rglob("*") if path.is_file()
         )
         for phrase in (
             "grants no additional",
