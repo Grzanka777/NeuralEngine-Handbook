@@ -31,6 +31,41 @@ def _source_agent(name: str) -> Path:
     return _source_root() / "agent-pack" / "platforms" / "opencode" / "agents" / name
 
 
+def _source_codex_skill() -> Path:
+    """Return the controlled Codex NeuralEngine skill projection."""
+    return (
+        _source_root()
+        / "agent-pack"
+        / "platforms"
+        / "codex"
+        / "skills"
+        / "neuralengine"
+        / "SKILL.md"
+    )
+
+
+def _source_codex_pointer() -> Path:
+    """Return the controlled Codex project-instruction pointer."""
+    return _source_root() / "agent-pack" / "platforms" / "codex" / "AGENTS.md"
+
+
+def _source_shared_neuralengine() -> Path:
+    """Return the authoritative shared NeuralEngine contract."""
+    return _source_root() / "agent-pack" / "shared" / "neuralengine.md"
+
+
+def _skill_body(content: str) -> str:
+    """Return a skill body after the required YAML front matter."""
+    lines = content.splitlines(keepends=True)
+    assert lines and lines[0].strip() == "---"
+    closing = next(
+        (index for index, line in enumerate(lines[1:], start=1) if line.strip() == "---"),
+        None,
+    )
+    assert closing is not None
+    return "".join(lines[closing + 1 :])
+
+
 def _sha256(path: Path) -> str:
     """Return SHA-256 hex digest of a file."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -800,3 +835,37 @@ class TestAgentCoexistence:
 
         installed = {p.name for p in target_dir.iterdir()}
         assert installed == set(names)
+
+
+class TestCodexNeuralEngineAdapter:
+    """Tests for the bounded Codex CLI NeuralEngine adapter projection."""
+
+    def test_codex_skill_exists_at_controlled_platform_path(self) -> None:
+        """Codex skill is packaged under the platform-controlled source path."""
+        assert _source_codex_skill().is_file()
+
+    def test_codex_skill_has_only_required_frontmatter(self) -> None:
+        """Codex projection has only the required skill metadata."""
+        lines = _source_codex_skill().read_text(encoding="utf-8").splitlines()
+        assert lines[0] == "---"
+        closing = lines.index("---", 1)
+        assert lines[1:closing] == [
+            "name: neuralengine",
+            "description: Use NeuralEngine as the durable project knowledge, decision, experience, and playbook layer for substantive repository, architecture, review, diagnostic, planning, and authorized Brain tasks.",
+        ]
+
+    def test_codex_skill_body_matches_shared_contract(self) -> None:
+        """Codex projection cannot silently diverge from shared semantics."""
+        skill = _source_codex_skill().read_text(encoding="utf-8")
+        shared = _source_shared_neuralengine().read_text(encoding="utf-8")
+        assert _skill_body(skill) == shared
+
+    def test_codex_pointer_references_without_redefining_contract(self) -> None:
+        """Project pointer names the skill and canonical source without policy duplication."""
+        content = _source_codex_pointer().read_text(encoding="utf-8")
+        assert ".agents/skills/neuralengine/SKILL.md" in content
+        assert "agent-pack/shared/neuralengine.md" in content
+        assert "does not duplicate or redefine that contract" in content
+        assert "## Authority model" not in content
+        assert "neural knowledge search" not in content
+        assert "Brain-write" not in content
