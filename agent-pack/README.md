@@ -10,10 +10,11 @@ repository—not a separate product.
 ## Scope
 
 - Six authoritative shared workflow files (Verification Framework added in v0.2.0, Task Execution Policy added in v0.4.0).
-- One platform variant (OpenCode) derived from the user's current, working
-  OpenCode configuration.
-- Placeholder directories for future Codex, Claude Code, and Antigravity
-  platform variants.
+- One complete platform variant (OpenCode) derived from the user's current,
+  working OpenCode configuration.
+- One bounded Codex CLI NeuralEngine skill projection.
+- Placeholder directories for future Claude Code and Antigravity platform
+  variants.
 
 This pack does not modify NeuralEngine runtime behavior, Brain persistence,
 schemas, migrations, user data, or public APIs.
@@ -47,7 +48,7 @@ contract and introduces the generic builder agent:
 | Task Execution Policy foundation review | READY FOR INDEPENDENT REVIEW |
 | ACP independent review | PASS |
 | OpenCode | Supported |
-| Codex | Placeholder (not implemented) |
+| Codex CLI NeuralEngine slice | Supported with limitations (CLI only) |
 | Claude Code | Placeholder (not implemented) |
 | Antigravity | Placeholder (not implemented) |
 
@@ -211,6 +212,7 @@ Shared contracts:
 OpenCode platform implementation:
 
 - [platforms/opencode/](platforms/opencode/) — OpenCode adapter and skills.
+- [platforms/codex/](platforms/codex/) — Codex CLI NeuralEngine adapter slice.
 - [platforms/opencode/agents/planner.md](platforms/opencode/agents/planner.md) — Read-only planning and routing agent.
 - [platforms/opencode/agents/builder.md](platforms/opencode/agents/builder.md) — Generic builder agent (new in v0.4.0).
 - [platforms/opencode/agents/arch-data-engineer.md](platforms/opencode/agents/arch-data-engineer.md) — Specialist implementation agent.

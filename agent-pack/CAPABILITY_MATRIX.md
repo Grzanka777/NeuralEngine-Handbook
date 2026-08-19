@@ -14,13 +14,13 @@
 
 | Capability | OpenCode | Codex CLI |
 |---|---|---|
-| **Agents / roles** | SUPPORTED — `builder` (generic implementation), `arch-data-engineer` (specialist, scoped permissions), `reviewer` (read-only, restricted permissions), `planner` (read-only planning and routing), `mechanical` (deterministic low-judgment operations) | NOT YET ASSESSED |
-| **Skills / contracts** | SUPPORTED — 5 skills: neuralengine, repository-review, python-project-validation, arch-linux-diagnostics, verification | NOT YET ASSESSED |
-| **Global instructions** | SUPPORTED — `neuralengine-usage.md` loaded via `opencode.json` instructions array | NOT YET ASSESSED |
-| **Permissions** | SUPPORTED — Agent-level permission blocks with allow/deny/ask for edit, bash, task, tools. Reviewer enforces read-only. | NOT YET ASSESSED |
-| **Shell execution** | SUPPORTED — Scoped bash allowlist for `arch-data-engineer` (read-only diagnostics and validation; commit, push, destructive Git/filesystem/partitioning commands, and Ruff auto-fix denied). Restricted allowlist for `reviewer`. | NOT YET ASSESSED |
-| **Repository instructions** | SUPPORTED — `AGENTS.md`, `CODEX.md`, `VISION.md`, `CONTEXT.md`, `pyproject.toml` awareness built into agent rules | NOT YET ASSESSED |
-| **NeuralEngine CLI** | SUPPORTED — `neural status` and `neural search` available and used in all reviews | NOT YET ASSESSED |
+| **Agents / roles** | SUPPORTED — `builder` (generic implementation), `arch-data-engineer` (specialist, scoped permissions), `reviewer` (read-only, restricted permissions), `planner` (read-only planning and routing), `mechanical` (deterministic low-judgment operations) | NOT YET ASSESSED — outside this NeuralEngine-only slice |
+| **Skills / contracts** | SUPPORTED — 5 skills: neuralengine, repository-review, python-project-validation, arch-linux-diagnostics, verification | SUPPORTED WITH LIMITATIONS — NeuralEngine contract projection only; other contracts remain unmapped |
+| **Global instructions** | SUPPORTED — `neuralengine-usage.md` loaded via `opencode.json` instructions array | SUPPORTED WITH LIMITATIONS — short `AGENTS.md` pointer; Codex CLI runtime discovery not exercised here |
+| **Permissions** | SUPPORTED — Agent-level permission blocks with allow/deny/ask for edit, bash, task, tools. Reviewer enforces read-only. | SUPPORTED WITH LIMITATIONS — Codex host sandbox/approval controls remain authoritative; no adapter write authority |
+| **Shell execution** | SUPPORTED — Scoped bash allowlist for `arch-data-engineer` (read-only diagnostics and validation; commit, push, destructive Git/filesystem/partitioning commands, and Ruff auto-fix denied). Restricted allowlist for `reviewer`. | SUPPORTED WITH LIMITATIONS — `neural` commands are ordinary host shell commands; executable/PATH/runtime behavior not verified |
+| **Repository instructions** | SUPPORTED — `AGENTS.md`, `CODEX.md`, `VISION.md`, `CONTEXT.md`, `pyproject.toml` awareness built into agent rules | SUPPORTED WITH LIMITATIONS — Codex CLI native `AGENTS.md` pointer for substantive/consequential work |
+| **NeuralEngine CLI** | SUPPORTED — `neural status` and `neural search` available and used in all reviews | SUPPORTED WITH LIMITATIONS — projection preserves `neural status`, targeted retrieval, and read-only boundaries; target installation not verified |
 | **Review** | SUPPORTED — `repository-review` skill, reviewer agent with read-only permissions, formal review format with verdict/checkpoint/validation/scope/findings | NOT YET ASSESSED |
 | **Verification** | SUPPORTED — reviewer agent with `verification` skill and enforced read-only command permissions (8 additional allow patterns: find, test, wc, sha256sum, diff, cmp, grep, sed). Quick Verification runs without permission prompts. | NOT YET ASSESSED |
 | **Certification** | SUPPORTED — Certification Report template, 3 verdicts (CERTIFIED/CERTIFIED WITH NOTES/NOT CERTIFIED), collision-safe naming, `.agent-work/certifications/` convention | NOT YET ASSESSED |
@@ -30,9 +30,10 @@
 
 ## Codex CLI assessment notes
 
-All Codex capabilities are `NOT YET ASSESSED`. The Codex Platform Assessment
-(task: `.agent-work/prompts/assess-codex-platform-v1.0.md`) is the designated
-authority to evaluate Codex against this matrix.
+This implementation assesses only the bounded Codex CLI NeuralEngine slice.
+The remaining Codex capabilities stay `NOT YET ASSESSED`. The provider-native
+assessment at `.agent-work/reviews/review-provider-native-cross-agent-neuralengine-adapters.md`
+is the authority for the host findings used by this slice.
 
 The following rules apply to the Codex assessment:
 
@@ -46,6 +47,20 @@ The following rules apply to the Codex assessment:
 5. The completed matrix must enable a decision on whether Codex can implement
    the v1.0 Adapter API defined in
    [DECISIONS/architecture-freeze-v1.0.md](../DECISIONS/architecture-freeze-v1.0.md).
+
+## Codex CLI evidence sources
+
+The bounded Codex CLI NeuralEngine slice is derived from:
+
+- `platforms/codex/AGENTS.md` — minimal project-instruction pointer.
+- `platforms/codex/skills/neuralengine/SKILL.md` — controlled semantic
+  projection of `shared/neuralengine.md` with Codex-required front matter.
+- `MANIFEST.md` — shared-to-Codex mapping and controlled-copy boundary.
+- `tests/test_agent_rollout.py` — focused front-matter, pointer, and semantic
+  drift checks.
+
+These files do not claim full Codex Adapter API support, Codex Desktop support,
+or provider runtime installation.
 
 ## OpenCode evidence sources
 
